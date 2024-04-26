@@ -25,9 +25,10 @@ class Client:
         state_dict=OrderedDict({k: torch.Tensor(v) for k,v in params_dict})
         if self.model is not None:
             self.model.load_state_dict(state_dict, strict=True)
-            log_file.write(f"Model parameters loaded on client {self.id}\n")
+            log_file.write(f"Model parameters updated on client {self.id}\n")
+            print(f"Model parameters updated on client {self.id}\n")
         else:
-            log_file.write("Cannot load parameters because the model is None\n")
+            log_file.write(f"Cannot update parameters on client {self.id} because the model is None\n")
             
     def get_parameters(self, log_file):
         #it sends back parameters to the server
@@ -42,7 +43,7 @@ class Client:
         # When this client starts the computation, it receives the weights from the server so we want to 
         # overwrite generate_nodesthe initial random weights with the ones sent from the server
         log_file.write(f"Starting training model of client {self.id}\n")
-       
+        print(f"Starting training model of client {self.id}\n")
 
         # Local training of the model
         
