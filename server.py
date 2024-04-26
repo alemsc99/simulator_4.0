@@ -11,12 +11,14 @@ from collections import OrderedDict
 import torch
 from model import test
 from pruning import random_unstructured_pruning, local_random_structured_pruning
+import GPUtil
 
 
 
 GLOBAL_EPOCHS = 2
 LOCAL_EPOCHS=1
-
+PRUNED_TRAINED_FILE='lstrainedpruned'
+PRUNED_FILE='lspruned'
 
 
 class Server:
@@ -25,7 +27,25 @@ class Server:
         self.model=model
         self.testloader = testloader
         self.model_parameters=OrderedDict((key, 0) for key in self.model.state_dict().keys())
+        self.model_saving_path="./models/"
         self.device=device
+        
+        
+        
+    def save_model(self, log_file, pruning_rate):
+        if pruning_rate==0.0:
+            path=f"{self.model_saving_path}trained_model.pth"
+        else:
+            pruning_rate_str= "{:02d}".format(int(pruning_rate * 10))
+            path=f"{self.model_saving_path}{PRUNED_TRAINED_FILE}_{pruning_rate_str}.pth"
+     
+        torch.save(self.model.state_dict(), f"{path}")
+        log_file.write(f"Model saved at {path}")
+        print(f"Model saved at {path}")
+        GPUtil.showUtilization(all=False, attrList=None, useOldCode=False)
+            
+        # return len_trainloaders, {}
+    
         
     def average_params(self, num_selected_clients):
         params=list(self.model_parameters.values())
@@ -48,23 +68,35 @@ class Server:
     def send_model(self, clients):
         for client in clients:
             client.model = self.model
+            
+            
 
-    def test_fn(self, model, device, parameters, log_file):
-        self.model=model()
-        device = device
-        params_dict = zip(model.state_dict().keys(), parameters)
-        state_dict = OrderedDict({k: torch.Tensor(v) for k, v in params_dict})
-        model.load_state_dict(state_dict, strict=True)
+    def start_testing(self, device, log_file, trained_model=None):
+        if trained_model is not None:
+            self.model=trained_model
+        
+        self.model.to(device)            
+        log_file.write("Starting testing on server \n")
+        print("Starting testing on server \n")
+        if self.model is not None:
+            self.model.load_state_dict(self.model_parameters, strict=True)
+            log_file.write(f"Model parameters updated on server \n")
+            print(f"Model parameters updated on server \n")
+        else:
+            log_file.write("Cannot update parameters on server because the model is None\n")
+            
         test(
-            model,
+            self.model,
             self.testloader,
             log_file=log_file,
             device=device,
         ) 
 
 
-    def start_training(self, clients, momentum, lr, log_file):
-      
+    def start_training(self, clients, momentum, lr, log_file, trained_model=None):
+        if trained_model is not None:
+            self.model=trained_model
+        
         for epoch in range(GLOBAL_EPOCHS):
             print(f"Starting global epoch {epoch}")
             # Retrieving weights to send to clients
@@ -86,6 +118,11 @@ class Server:
                 print(f"Model parameters updated on server \n")
             else:
                 log_file.write("Cannot update parameters on server because the model is None\n")
+        
+        self.save_model(log_file=log_file,
+                        pruning_rate=0.0, 
+                        )
+        
         
     
     def prune_fn(task, device, log_file):

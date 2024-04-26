@@ -25,18 +25,13 @@ class Task:
         self.pre_trained=pre_trained
 
 class Job:
-    def __init__(self, id, generation_time, dataset=None, num_epochs=None,task=Task) -> None:
+    def __init__(self, id, generation_time, dataset=None,task=Task) -> None:
         self.id=id
         self.generation_time=generation_time
         if dataset in {"mnist", "cifar10"}:
             self.dataset=dataset
         else:
             raise ValueError("Dataset must be either mnist or cifar10")
-        
-        if num_epochs is not None and num_epochs!='None':
-            self.num_epochs=num_epochs
-        else:
-            self.num_epochs=0
        
         self.task=task
         

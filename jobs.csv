@@ -1,1 +1,2 @@
-id,dataset,num_epochs,task_name,isGlobal,isRandom,isStructured,pruning_rate,pre_trained
+id,dataset,task_name,isGlobal,isRandom,isStructured,pruning_rate,pre_trained
+2,cifar10,Testing,None,None,None,None,True

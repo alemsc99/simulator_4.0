@@ -74,7 +74,7 @@ def load_trained_model(device, filename):
 
 def read_csv_file(file_name, device):
     jobs = []
-    jobs.append(Job(id=1, generation_time=datetime.now(), dataset= 'cifar10', num_epochs=10,
+    jobs.append(Job(id=1, generation_time=datetime.now(), dataset= 'cifar10',
                     task=Task('Training', None, None, None, None, False)))  
     with open(file_name, 'r', newline='') as file:
         reader = csv.DictReader(file)
@@ -117,16 +117,11 @@ def read_csv_file(file_name, device):
             else:
                 pre_trained=None
                 
-            num_epochs= row['num_epochs']
-            if num_epochs!='None':
-                num_epochs=int(num_epochs)
-            else:
-                num_epochs=None
+            
             job=Job(
                 id=int(row['id']),
                 generation_time=datetime.now(),
                 dataset= row['dataset'],
-                num_epochs= num_epochs,
                 task=Task(
                     name=row['task_name'],
                     isGlobal= isGlobal,
