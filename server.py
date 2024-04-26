@@ -11,6 +11,7 @@ from collections import OrderedDict
 import torch
 from model import test
 from pruning import random_unstructured_pruning, local_random_structured_pruning
+import numpy
 
 
 
@@ -21,7 +22,7 @@ class Server:
         self.number_of_clients = number_of_clients
         self.model=model
         self.testloader = testloader
-        self.model_parameters=[]
+        self.model_parameters=self.model.state_dict().values()
         self.device=device
         
 
@@ -51,13 +52,15 @@ class Server:
       
         for epoch in range(GLOBAL_EPOCHS):
             print(f"Global epoch: {epoch}")
+            
+            global_params = numpy.zeros(len(self.model_parameters)).tolist()
             for client in clients:
                 #Training all clients
                 client.model.to(self.device)
                 params, _, _=client.fit(LOCAL_EPOCHS, lr, momentum, log_file)
-                self.model_parameters.append(params)
+                global_params+=params
         # merging received weights 
-        print(len(self.model_parameters))
+        self.model_parameters=self.model_parameters/len(clients)
         # aggiornamento dei pesi dei clients
             
     def prune_fn(task, device, log_file):

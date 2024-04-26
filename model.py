@@ -73,8 +73,8 @@ def train(net, trainloader, valloader,  optimizer, epochs, log_file, device: str
                 log_file.write(f"Epoch [{epoch+1}/{epochs}], Step [{i+1}/{len(trainloader)}], Loss: {running_loss/100:.3f}\n")
                 log_file.flush()
                 running_loss = 0.0
-            # if i>5:
-            #     break
+            if i>5:
+                break
             
     
        # Validation

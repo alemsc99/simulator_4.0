@@ -6,7 +6,6 @@ from resnet import ResNet18
 from pruning import retrieve_file
 from client import Client
 from torch.utils.data import Subset, DataLoader
-from sklearn.model_selection import train_test_split
 
 TEST_RATIO=0.1
 VAL_RATIO=0.1
