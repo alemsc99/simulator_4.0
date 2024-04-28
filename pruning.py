@@ -67,23 +67,12 @@ def random_unstructured_pruning(pruning_rate: float, device):
 '''
 This function applies STRUCTURED LOCAL pruning to the model.
 '''    
-def local_random_structured_pruning(pruning_rate: float, device):
-    trained_model=retrieve_file(folder="./models", file_name='trained_model.pth')
-    model=ResNet18(num_classes=10, input_channels=3).to(device)
-    model.load_state_dict(torch.load(trained_model))
-    
-    
-    
+def local_random_structured_pruning(model, pruning_rate: float, device):
+   
     for name, module in model.named_modules():
         if isinstance(module, (nn.Conv2d, nn.Linear)):  # Pruning su Conv2d, Linear
             m=prune.ln_structured(module, 'weight', pruning_rate,n =float("-inf"), dim=1 )
-            
             m=prune.remove(m, name='weight')
-   
-    pruning_rate_str= "{:02d}".format(int(pruning_rate * 10))
-    path=f"{model_saving_path}lspruned_{pruning_rate_str}.pth"
-    # 
-    torch.save(model.state_dict(), f"{path}")
  
     
     

@@ -10,6 +10,11 @@ from torch.utils.data import Subset, DataLoader
 TEST_RATIO=0.1
 VAL_RATIO=0.1
 
+
+def show_clients_loss(clients_loss, clients_acc, log_file):
+    for id, (loss, acc) in enumerate(zip(clients_loss, clients_acc)):
+        log_file.write(f"Client {id} loss: {loss}, Client accuracy: {acc}\n")
+
 def split_loader(loader,  n_clients, batch_size):
     
     # Calculate the total number of samples in the trainloader
@@ -37,7 +42,7 @@ def split_loader(loader,  n_clients, batch_size):
         
     return client_loaders
 
-def generate_nodes(adj_matrix, size, trainloader, valloader, batch_size):
+def generate_nodes(adj_matrix, size, trainloader, valloader, testloader, batch_size, device):
     trainloaders = split_loader(
         loader=trainloader,
         n_clients=size,
@@ -45,6 +50,12 @@ def generate_nodes(adj_matrix, size, trainloader, valloader, batch_size):
     )
     valloaders = split_loader(
         loader=valloader,
+        n_clients=size,
+        batch_size=batch_size
+    )
+    
+    testloaders=split_loader(
+        loader=testloader,
         n_clients=size,
         batch_size=batch_size
     )
@@ -60,7 +71,9 @@ def generate_nodes(adj_matrix, size, trainloader, valloader, batch_size):
                         id=j,
                         neighbors=neighbors,
                         trainloader=trainloaders[j],
-                        valloader=valloaders[j]
+                        valloader=valloaders[j],
+                        testloader=testloaders[j],
+                        device=device
                         ))
     return nodes
                 

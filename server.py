@@ -52,6 +52,7 @@ class Server:
         averaged_params=[x/num_selected_clients for x in params]
         new_params=zip(self.model.state_dict().keys(), averaged_params)
         self.model_parameters=OrderedDict({k: torch.Tensor(v) for k,v in new_params})
+        self.model.load_state_dict(self.model_parameters, strict=True)
    
     def aggregate_params(self, parameters):        
         starting_params=list(self.model_parameters.values())
@@ -71,29 +72,48 @@ class Server:
             
             
 
-    def start_testing(self, device, log_file, trained_model=None):
+    def start_testing(self, clients, device, log_file, trained_model=None):
+        clients_loss = []
+        clients_acc=[]
+        
         if trained_model is not None:
             self.model=trained_model
+            
+        # Testing on clients
+        log_file.write("Starting testing on clients \n")
+        log_file.flush()
+        print("Starting testing on clients \n")
+        for client in clients:
+            client.set_parameters(log_file, self.model.state_dict().values())
+            loss, acc=client.client_test(log_file, device)
+            clients_loss.append(loss)
+            clients_acc.append(acc)
         
+        # Testing on server
         self.model.to(device)            
         log_file.write("Starting testing on server \n")
+        log_file.flush()
         print("Starting testing on server \n")
         if self.model is not None:
             self.model.load_state_dict(self.model_parameters, strict=True)
             log_file.write(f"Model parameters updated on server \n")
+            log_file.flush()
             print(f"Model parameters updated on server \n")
         else:
             log_file.write("Cannot update parameters on server because the model is None\n")
+            log_file.flush()
             
-        test(
+        server_loss, server_acc=test(
             self.model,
             self.testloader,
             log_file=log_file,
             device=device,
         ) 
+        
+        return server_loss, server_acc, clients_loss, clients_acc
 
 
-    def start_training(self, clients, momentum, lr, log_file, trained_model=None):
+    def start_training(self, training_clients, momentum, lr, log_file, trained_model=None):
         if trained_model is not None:
             self.model=trained_model
         
@@ -101,23 +121,26 @@ class Server:
             print(f"Starting global epoch {epoch}")
             # Retrieving weights to send to clients
             params_to_send=self.model.state_dict().values()
-            for client in clients:
-                # Updating clients' weights
-                client.set_parameters(log_file, params_to_send)
+            for client in training_clients:
+                # Updating clients' weights after the first global epoch
+                if epoch>1:
+                    client.set_parameters(log_file, params_to_send)
                 client.model.to(self.device)
                 # Training the client
                 params, _, _=client.fit(LOCAL_EPOCHS, lr, momentum, log_file)
                 # Collecting received weights
                 self.aggregate_params(params)
             # averaging reveived weights
-            self.average_params(len(clients))
+            self.average_params(len(training_clients))
             # aggiornamento dei pesi del server 
             if self.model is not None:
                 self.model.load_state_dict(self.model_parameters, strict=True)
                 log_file.write(f"Model parameters updated on server \n")
+                log_file.flush()
                 print(f"Model parameters updated on server \n")
             else:
                 log_file.write("Cannot update parameters on server because the model is None\n")
+                log_file.flush()
         
         self.save_model(log_file=log_file,
                         pruning_rate=0.0, 
@@ -125,7 +148,7 @@ class Server:
         
         
     
-    def prune_fn(task, device, log_file):
+    def prune_fn(self, task, clients, device, log_file):
         if task.name== "Pruning":
             try:
                 random_unstructured_pruning(pruning_rate=task.pruning_rate, device=device)               
@@ -134,10 +157,15 @@ class Server:
                 log_file.flush()
         elif task.name== "LSPruning":
             try:
-                local_random_structured_pruning(pruning_rate=task.pruning_rate, device=device)               
+                local_random_structured_pruning(
+                    model=self.model,
+                    pruning_rate=task.pruning_rate, 
+                    device=device)               
             except Exception as e:
                 log_file.write(f"Error running the script: {e}")
                 log_file.flush()
+                for client in clients:
+                    client.set_parameters(log_file, self.model.state_dict().values())
         else:
             log_file.write(f"Task {task.name} not recognized")
             log_file.flush()

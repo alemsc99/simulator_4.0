@@ -53,7 +53,9 @@ def main():
             size=NUMBER_OF_NODES, 
             trainloader=trainloader, 
             valloader=valloader,
-            batch_size=BATCH_SIZE)
+            testloader=testloader,
+            batch_size=BATCH_SIZE,
+            device=device)
         print(f"Generated {NUMBER_OF_NODES} nodes")
     except Exception as e:
         print(e)
@@ -62,7 +64,8 @@ def main():
     try:
         selected_clients=server.select_clients(NUMBER_OF_NODES, clients_to_select=CLIENTS_TO_SELECT)
         print(f"Selected {len(selected_clients)} clients.")
-        nodes = [node for node in nodes if node.id in selected_clients]
+        training_clients = [node for node in nodes if node.id in selected_clients]
+        remaining_clients = [node for node in nodes if node.id not in selected_clients]
     except Exception as e:
         print(e)
         exit()
@@ -81,7 +84,7 @@ def main():
   
     
     
-    job_handler=JobHandler()
+    job_handler=JobHandler(device=device)
    
     #Jobs generation
     for i in range(0,1):
@@ -98,7 +101,8 @@ def main():
                                log_file=log_file,
                                device=device, 
                                server=server,
-                               selected_clients=nodes)
+                               training_clients=training_clients,
+                               remaining_clients=remaining_clients)
        
     
    

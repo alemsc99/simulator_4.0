@@ -6,16 +6,17 @@ The Client class has to:
 '''
 from collections import OrderedDict
 import torch
-from model import train
+from model import train, test
 
 class Client:
-    def __init__(self, id:int, neighbors:list, trainloader, valloader):
+    def __init__(self, id:int, neighbors:list, trainloader, valloader, testloader, device):
         self.id=id
         self.neighbors = neighbors
         self.model=None
         self.trainloader = trainloader
         self.valloader = valloader
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"  
+        self.testloader = testloader
+        self.device = device
     
     
     
@@ -64,5 +65,20 @@ class Client:
 
         return self.get_parameters({}), len(self.trainloader), {}
 
+
+
+
+    def client_test(self,log_file, device):
+        log_file.write(f"Starting testing on client {self.id} \n")
+        print(f"Starting testing on client {self.id} \n")
+        loss, accuracy=test(
+            net=self.model,
+            testloader=self.testloader,
+            log_file=log_file,
+            device=device,
+        )
+        
+        return loss, accuracy
+        
    
             
