@@ -15,8 +15,7 @@ import GPUtil
 
 
 
-GLOBAL_EPOCHS = 2
-LOCAL_EPOCHS=1
+
 PRUNED_TRAINED_FILE='lstrainedpruned'
 PRUNED_FILE='lspruned'
 
@@ -32,19 +31,15 @@ class Server:
         
         
         
-    def save_model(self, log_file, pruning_rate):
-        if pruning_rate==0.0:
-            path=f"{self.model_saving_path}trained_model.pth"
-        else:
-            pruning_rate_str= "{:02d}".format(int(pruning_rate * 10))
-            path=f"{self.model_saving_path}{PRUNED_TRAINED_FILE}_{pruning_rate_str}.pth"
-     
+    def save_model(self, log_file):
+        
+        path=f"{self.model_saving_path}trained_model.pth"
         torch.save(self.model.state_dict(), f"{path}")
-        log_file.write(f"Model saved at {path}")
-        print(f"Model saved at {path}")
+        log_file.write(f"Model saved at {path}\n")
+        print(f"Model saved at {path}\n")
         GPUtil.showUtilization(all=False, attrList=None, useOldCode=False)
             
-        # return len_trainloaders, {}
+
     
         
     def average_params(self, num_selected_clients):
@@ -113,11 +108,11 @@ class Server:
         return server_loss, server_acc, clients_loss, clients_acc
 
 
-    def start_training(self, training_clients, momentum, lr, log_file, trained_model=None):
+    def start_training(self, training_clients, momentum, lr, log_file, global_epochs, local_epochs, trained_model=None):
         if trained_model is not None:
             self.model=trained_model
         
-        for epoch in range(GLOBAL_EPOCHS):
+        for epoch in range(global_epochs):
             print(f"Starting global epoch {epoch}")
             # Retrieving weights to send to clients
             params_to_send=self.model.state_dict().values()
@@ -127,7 +122,7 @@ class Server:
                     client.set_parameters(log_file, params_to_send)
                 client.model.to(self.device)
                 # Training the client
-                params, _, _=client.fit(LOCAL_EPOCHS, lr, momentum, log_file)
+                params, _, _=client.fit(local_epochs, lr, momentum, log_file)
                 # Collecting received weights
                 self.aggregate_params(params)
             # averaging reveived weights
@@ -141,10 +136,8 @@ class Server:
             else:
                 log_file.write("Cannot update parameters on server because the model is None\n")
                 log_file.flush()
-        
-        self.save_model(log_file=log_file,
-                        pruning_rate=0.0, 
-                        )
+        if global_epochs==10 and local_epochs==10:
+            self.save_model(log_file=log_file)
         
         
     
@@ -160,12 +153,14 @@ class Server:
                 local_random_structured_pruning(
                     model=self.model,
                     pruning_rate=task.pruning_rate, 
-                    device=device)               
+                    device=device) 
+                self.model_parameters=self.model.state_dict()  
+                for client in clients:
+                    client.set_parameters(log_file, self.model.state_dict().values())          
             except Exception as e:
                 log_file.write(f"Error running the script: {e}")
                 log_file.flush()
-                for client in clients:
-                    client.set_parameters(log_file, self.model.state_dict().values())
+                
         else:
             log_file.write(f"Task {task.name} not recognized")
             log_file.flush()

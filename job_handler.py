@@ -32,22 +32,7 @@ class JobHandler:
             log_file.write(f"[{starting_time}]\n" + f"Handling job with id: {job.id}, generation time: {job.generation_time}, task: {job.task.name}, pruning_rate: {job.task.pruning_rate}" + "\n")
             log_file.flush()
             torch.cuda.empty_cache()
-            # if job.task.pre_trained and job.task.name=='Training':
-            #     filename='trained_model.pth'
-            #     if job.task.pruning_rate==0.0:
-            #         filename='trained_model.pth'
-            #     else:
-            #         pruning_rate_str= "{:02d}".format(int(job.task.pruning_rate * 10))
-            #         filename=f'{PRUNED_FILE}_{pruning_rate_str}.pth'  
-                     
-            #     trained_model=load_trained_model(device, filename)
-                
-            # elif job.task.pre_trained and job.task.name=='Testing':
-            #     if job.task.pruning_rate==0.0:
-            #         filename='trained_model.pth'
-            #     else:
-            #         pruning_rate_str= "{:02d}".format(int(job.task.pruning_rate * 10))
-            #         filename=f'{PRUNED_TRAINED_FILE}_{pruning_rate_str}.pth'
+            
             if job.task.pre_trained:
                 filename='trained_model.pth'
                 trained_model=load_trained_model(device, filename)      
@@ -59,6 +44,8 @@ class JobHandler:
                                           momentum=self.momentum,
                                           lr=self.lr, 
                                           log_file=log_file, 
+                                          global_epochs=job.global_epochs,
+                                          local_epochs=job.local_epochs,
                                           trained_model=trained_model)
                     #self.training_function(log_file, job.task.pruning_rate, job.num_epochs, server, selected_clients)
                 except Exception as e:
