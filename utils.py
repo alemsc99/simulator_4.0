@@ -6,11 +6,52 @@ from resnet import ResNet18
 from pruning import retrieve_file
 from client import Client
 from torch.utils.data import Subset, DataLoader
+import numpy
+import pandas as pd
+from tabulate import tabulate
 
 TEST_RATIO=0.1
 VAL_RATIO=0.1
 
 
+
+def write_matrix(results_matrix, simulation_number):
+    # Calculate the mean of each row
+    row_means = results_matrix.mean(axis=1)
+
+    # Append a new column with the mean of each row to the matrix
+    results_matrix_with_mean = numpy.column_stack((results_matrix, row_means))
+
+    # Save the matrix to a CSV file
+    path = "./simulation_logs/"
+
+    # Custom names for columns and rows
+    column_names = [f"Client {c}" for c in range(results_matrix.shape[1])]
+    column_names.append("Accuracy Mean")
+
+    row_names = ['No Pruning', 'Pruning 20%', 'Pruning 40%', 'Pruning 60%', 'Pruning 80%']
+
+    # Convert the NumPy array to a pandas DataFrame with custom column and row names
+    df = pd.DataFrame(results_matrix_with_mean, index=row_names, columns=column_names)
+
+    # Save the DataFrame to a CSV file
+    df.to_csv(f'{path}accuracies_{simulation_number}.csv', float_format='%.3f')
+    
+    # Visualize the table
+    table_str = tabulate(df, headers='keys', tablefmt='grid')
+
+    #Computing variance
+    results_matrix_variance =numpy.var(results_matrix)
+    
+    
+    # Add a line break and the variance below the table
+    table_str += f"\n\nVariance of the matrix: {results_matrix_variance}"
+
+    # Save the visualized table to a text file
+    with open(f'{path}accuracies_{simulation_number}.txt', 'w') as file:
+        file.write(table_str)
+
+       
 def show_clients_loss(clients_loss, clients_acc, log_file):
     for id, (loss, acc) in enumerate(zip(clients_loss, clients_acc)):
         log_file.write(f"Client {id} loss: {loss}, Client accuracy: {acc}\n")
@@ -79,16 +120,16 @@ def generate_nodes(adj_matrix, size, trainloader, valloader, testloader, batch_s
                 
     
 
-def load_trained_model(device, filename):
+def load_trained_model(device, filename, input_channels, num_classes):
     trained_model=retrieve_file(folder="./models", file_name=filename)
-    model=ResNet18(num_classes=10, input_channels=3).to(device)
+    model=ResNet18(num_classes=num_classes, input_channels=input_channels).to(device)
     model.load_state_dict(torch.load(trained_model))
     return model
 
-def read_csv_file(file_name, device):
+def read_csv_file(file_name, fj_global_epochs, fj_local_epochs, dataset):
     jobs = []
-    jobs.append(Job(id=1, generation_time=datetime.now(), dataset= 'cifar10',
-                    global_epochs=10, local_epochs=10,
+    jobs.append(Job(id=1, generation_time=datetime.now(), dataset= dataset,
+                    global_epochs=fj_global_epochs, local_epochs=fj_local_epochs,
                     task=Task('Training', None, None, None, None, False)))  
     with open(file_name, 'r', newline='') as file:
         reader = csv.DictReader(file)

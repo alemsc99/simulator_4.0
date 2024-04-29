@@ -1,9 +1,9 @@
 
 import torch
 from datetime import datetime
-from utils import show_clients_loss
+from utils import show_clients_loss, write_matrix
 from pruning import random_unstructured_pruning, local_random_structured_pruning
-
+import numpy
 
 PRUNED_TRAINED_FILE='lstrainedpruned'
 PRUNED_FILE='lspruned'
@@ -23,8 +23,10 @@ class JobHandler:
 
 
 
-    def handle_job(self, jobs_list, log_file, device,server, training_clients, remaining_clients):
-      
+    def handle_job(self, jobs_list, log_file, device,server, training_clients, remaining_clients, input_channels,num_classes, simulation_number):
+        number_of_clients=len(remaining_clients)+len(training_clients)
+        results_matrix=numpy.zeros((5, number_of_clients))
+        line_to_replace=0
         
         for job in jobs_list:
             starting_time=datetime.now()
@@ -35,7 +37,7 @@ class JobHandler:
             
             if job.task.pre_trained:
                 filename='trained_model.pth'
-                trained_model=load_trained_model(device, filename)      
+                trained_model=load_trained_model(device, filename, input_channels, num_classes)      
             
         
             if job.task.name == "Training":                
@@ -62,8 +64,12 @@ class JobHandler:
                                                                                             trained_model=trained_model)
                     #loss, accuracy = self.testing_function(testloaders, log_file)
                     show_clients_loss(clients_loss, clients_acc, log_file)
+                    
                     log_file.write(f"Server loss: {server_loss}, Server accuracy: {server_acc} \n")
                     log_file.flush()
+                    if job.id in [4, 7, 10, 13, 16]:
+                        results_matrix[line_to_replace, :]=clients_acc
+                        line_to_replace=line_to_replace+1
                     print("Testing finished \n")
                 except Exception as e:
                     log_file.write(f"Error running the script: {e} \n")
@@ -101,6 +107,9 @@ class JobHandler:
              
             log_file.write(f"[{datetime.now()}]" + f" Completed job {job.id}.\nComputation time: {datetime.now()-starting_time}.\n")
             log_file.flush()
+            
+        write_matrix(results_matrix, simulation_number)
+        
                     
       
         

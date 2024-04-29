@@ -17,6 +17,9 @@ VAL_RATIO=0.1
 NUM_CLASSES=10
 INPUT_CHANNELS=3
 CLIENTS_TO_SELECT=2
+FJ_GLOBAL_EPOCHS=10
+FJ_LOCAL_EPOCHS=10
+NUMBER_OF_SIMULATIONS=5
 
 def main():
     
@@ -87,22 +90,22 @@ def main():
     job_handler=JobHandler(device=device)
    
     #Jobs generation
-    for i in range(0,1):
-        jobs=read_csv_file(JOBS_FILE, device)
+    for i in range(0,NUMBER_OF_SIMULATIONS):
+        jobs=read_csv_file(JOBS_FILE, FJ_GLOBAL_EPOCHS, FJ_LOCAL_EPOCHS, DATASET)
         log_file.write('\n')
         log_file.write("*"*5 +f" Iteration number {i}. Current number of jobs {len(jobs)} "+ "*"*5 + "\n")
         log_file.flush()
         
-        # if job.task.pruning_rate != 0.0:
-        #     file_size = os.stat(f'./models/{filename}').st_size
-        #     log_file.write(f"Model dimensions {file_size/1000000} MB\n")
-        #     log_file.flush()
         job_handler.handle_job(jobs_list=jobs, 
                                log_file=log_file,
                                device=device, 
                                server=server,
                                training_clients=training_clients,
-                               remaining_clients=remaining_clients)
+                               remaining_clients=remaining_clients,
+                               input_channels=INPUT_CHANNELS,
+                               num_classes=NUM_CLASSES,
+                               simulation_number=i
+                               )
        
     
    

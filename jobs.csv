@@ -12,5 +12,5 @@ id,dataset,global_epochs,local_epochs,task_name,isGlobal,isRandom,isStructured,p
 12,cifar10,5,5,Training,None,None,None,0.6,False
 13,cifar10,None,None,Testing,None,None,None,0.6,False
 14,cifar10,None,None,LSPruning,False,True,True,0.8,True
-15,cifar10,5,5,Training,None,None,None,0.8,False
+11,cifar10,5,5,Training,None,None,None,0.8,False
 16,cifar10,None,None,Testing,None,None,None,0.8,False
