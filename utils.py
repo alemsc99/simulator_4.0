@@ -114,7 +114,7 @@ def generate_nodes(adj_matrix, size, trainloader, valloader, testloader, batch_s
                         trainloader=trainloaders[j],
                         valloader=valloaders[j],
                         testloader=testloaders[j],
-                        gpu_fraction=0.01,
+                        gpu_fraction=0.2,
                         device=device
                         ))
     return nodes

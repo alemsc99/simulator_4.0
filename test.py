@@ -1,15 +1,38 @@
 import tensorflow as tf
+import subprocess
 
-class Client:
-    def _init_(self, gpu_fraction):
-        self.gpu_fraction = gpu_fraction
+def check_gpu_memory():
+    # Use nvidia-smi command to get GPU memory usage
+    result = subprocess.run(['nvidia-smi', '--query-gpu=memory.used', '--format=csv,nounits,noheader'], stdout=subprocess.PIPE)
+    return float(result.stdout.strip())
 
-    def set_gpu_memory_fraction(self):
-        gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=self.gpu_fraction)
-        config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
-        session = tf.compat.v1.Session(config=config)
-        tf.compat.v1.keras.backend.set_session(session)
+def run_with_fraction(fraction):
+    # Define GPU options
+    gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=fraction)
+    config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
 
-# Esempio di utilizzo
-client1 = Client(gpu_fraction=0.5)  # Imposta la percentuale massima di GPU al 50%
-client2 = Client(gpu_fraction=0.3)  # Imposta la percentuale massima di GPU al 30%
+    # Create TensorFlow session with specified configuration
+    with tf.compat.v1.Session(config=config) as sess:
+        # Define a simple TensorFlow computation graph
+        a = tf.constant(5.0)
+        b = tf.constant(3.0)
+        c = tf.add(a, b)
+        
+        # Execute the graph and fetch the result
+        result = sess.run(c)
+        print("Result:", result)
+
+# Run with fraction 0.000001
+print("Memory usage with fraction 0.000001:", check_gpu_memory())
+run_with_fraction(0.000001)
+
+# Run with fraction 0.01
+print("Memory usage with fraction 0.01:", check_gpu_memory())
+run_with_fraction(0.01)
+
+
+
+
+# Run with fraction 0.01
+print("Memory usage with fraction 0.5:", check_gpu_memory())
+run_with_fraction(0.5)

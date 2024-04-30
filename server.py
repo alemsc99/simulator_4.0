@@ -109,6 +109,7 @@ class Server:
 
 
     def start_training(self, training_clients, momentum, lr, log_file, global_epochs, local_epochs, trained_model=None):
+        
         if trained_model is not None:
             self.model=trained_model
         

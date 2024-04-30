@@ -8,10 +8,7 @@ from collections import OrderedDict
 import torch
 from model import train, test
 import tensorflow as tf
-
-
-        
-        
+  
 class Client:
     def __init__(self, id:int, neighbors:list, trainloader, valloader, testloader, gpu_fraction, device):
         self.id=id
@@ -62,8 +59,13 @@ class Client:
 
         # Local training of the model
         
-
+        torch.cuda.set_per_process_memory_fraction(self.gpu_fraction)
         optim=torch.optim.SGD(self.model.parameters(), lr=lr, momentum=momentum)
+        
+        
+        gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=self.gpu_fraction)
+        config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
+        session = tf.compat.v1.Session(config=config)
         
         
         _, self.GPU_usage_table=train(net=self.model,
