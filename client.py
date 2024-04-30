@@ -7,17 +7,31 @@ The Client class has to:
 from collections import OrderedDict
 import torch
 from model import train, test
+import tensorflow as tf
 
+
+        
+        
 class Client:
-    def __init__(self, id:int, neighbors:list, trainloader, valloader, testloader, device):
+    def __init__(self, id:int, neighbors:list, trainloader, valloader, testloader, gpu_fraction, device):
         self.id=id
         self.neighbors = neighbors
         self.model=None
         self.trainloader = trainloader
         self.valloader = valloader
         self.testloader = testloader
+        self.gpu_fraction = gpu_fraction
+        self.GPU_usage_table=None
         self.device = device
-    
+        
+        
+        
+    def GPU_usage(self, log_file):
+        #Printing GPU utilization at the end of global epochs
+        log_file.write(f"Finished training model of client {self.id}\n")
+        log_file.write(str(self.GPU_usage_table))
+        log_file.write("\n")
+        log_file.flush()
     
     
     def set_parameters(self, log_file, parameters):
@@ -50,8 +64,9 @@ class Client:
         
 
         optim=torch.optim.SGD(self.model.parameters(), lr=lr, momentum=momentum)
-
-        train(net=self.model,
+        
+        
+        _, self.GPU_usage_table=train(net=self.model,
               trainloader=self.trainloader, 
               valloader=self.valloader, 
               optimizer=optim, 

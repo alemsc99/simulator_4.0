@@ -6,6 +6,7 @@ from pruning import calculate_sparsity_and_NNZ
 import psutil
 from torch.profiler import profile, record_function, ProfilerActivity
 from torch.utils.tensorboard import SummaryWriter
+from gputil_decorator import gputil_decorator
 
 writer=SummaryWriter()
 class Net(nn.Module):
@@ -38,6 +39,9 @@ def print_utilization(device, log_file):
     cpu_usage = psutil.cpu_percent()
     log_file.write(f"CPU Utilization: {cpu_usage:.2f}%\n")
     
+    
+    
+@gputil_decorator
 def train(net, trainloader, valloader,  optimizer, epochs, log_file, device: str):
     sparsity, nnz=calculate_sparsity_and_NNZ(net)
     log_file.write(f"Sparsity: {sparsity}, NNZ: {nnz}\n")
@@ -73,8 +77,10 @@ def train(net, trainloader, valloader,  optimizer, epochs, log_file, device: str
                 log_file.write(f"Epoch [{epoch+1}/{epochs}], Step [{i+1}/{len(trainloader)}], Loss: {running_loss/100:.3f}\n")
                 log_file.flush()
                 running_loss = 0.0
-            # if i>5:
-            #     break
+            if i>5:
+                break
+            
+      
             
     
        # Validation

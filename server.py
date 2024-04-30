@@ -123,6 +123,8 @@ class Server:
                 client.model.to(self.device)
                 # Training the client
                 params, _, _=client.fit(local_epochs, lr, momentum, log_file)
+                if epoch==global_epochs-1:
+                    client.GPU_usage(log_file)
                 # Collecting received weights
                 self.aggregate_params(params)
             # averaging reveived weights

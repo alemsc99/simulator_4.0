@@ -16,6 +16,9 @@ VAL_RATIO=0.1
 
 
 def write_matrix(results_matrix, simulation_number):
+    #Computing variance
+    results_matrix_variance =numpy.var(results_matrix)
+    
     # Calculate the mean of each row
     row_means = results_matrix.mean(axis=1)
 
@@ -40,9 +43,6 @@ def write_matrix(results_matrix, simulation_number):
     # Visualize the table
     table_str = tabulate(df, headers='keys', tablefmt='grid')
 
-    #Computing variance
-    results_matrix_variance =numpy.var(results_matrix)
-    
     
     # Add a line break and the variance below the table
     table_str += f"\n\nVariance of the matrix: {results_matrix_variance}"
@@ -114,6 +114,7 @@ def generate_nodes(adj_matrix, size, trainloader, valloader, testloader, batch_s
                         trainloader=trainloaders[j],
                         valloader=valloaders[j],
                         testloader=testloaders[j],
+                        gpu_fraction=0.01,
                         device=device
                         ))
     return nodes
