@@ -35,7 +35,8 @@ def prepare_dataset(dataset_name, batch_size:int, val_ratio: float=0.1):
     else:
         raise ValueError(f"Dataset {dataset_name} not recognized")
     
-  
+    
+    #We want to partition the training set in training and validation sets
     #Now, for each trainingset, we want to partition it in training and validation 
     #and create DataLoaders for each of them
         
@@ -58,5 +59,3 @@ def prepare_dataset(dataset_name, batch_size:int, val_ratio: float=0.1):
 
     return trainloaders, valloaders, testloader
 
-
-    

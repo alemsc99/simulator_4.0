@@ -3,11 +3,11 @@ import os
 import torch
 import numpy as numpy
 from job_handler import JobHandler
-from utils import read_csv_file, load_trained_model, generate_nodes
+from utils import read_csv_file, generate_nodes, generate_adjacency_matrix
 from server import Server
 from dataset import prepare_dataset
 from resnet import ResNet18
-
+from utils import check_iid
 
 JOBS_FILE= './jobs.csv'
 NUMBER_OF_NODES=10
@@ -17,13 +17,20 @@ VAL_RATIO=0.1
 NUM_CLASSES=10
 INPUT_CHANNELS=3
 CLIENTS_TO_SELECT=2
-FJ_GLOBAL_EPOCHS=2
-FJ_LOCAL_EPOCHS=3
-NUMBER_OF_SIMULATIONS=1
+FJ_GLOBAL_EPOCHS=20
+FJ_LOCAL_EPOCHS=20
+NUMBER_OF_SIMULATIONS=5
+NETWORK_DENSITY=0.5
 
 def main():
     
     device="cuda" if torch.cuda.is_available() else "cpu"  
+    
+    #Opening logmanager file
+    log_folder = "simulation_logs"
+    if not os.path.exists(log_folder):
+        os.makedirs(log_folder)
+    log_file = open(os.path.join(log_folder, 'job_manager_logs.txt'), 'a')
     
     #Prepare dataset     
     trainloader, valloader, testloader=prepare_dataset(DATASET, BATCH_SIZE, VAL_RATIO)
@@ -38,18 +45,8 @@ def main():
     
     
     
-    adjacency_matrix = [
-        [0, 1, 0, 0, 1, 0, 1, 0, 1, 1],
-        [1, 1, 1, 1, 0, 0, 1, 1, 1, 1],
-        [0, 1, 1, 1, 1, 1, 0, 0, 1, 1],
-        [1, 1, 1, 1, 1, 0, 0, 1, 0, 0],
-        [1, 0, 1, 0, 1, 1, 0, 0, 0, 0],
-        [1, 1, 0, 0, 1, 0, 1, 1, 1, 1],
-        [1, 0, 0, 1, 0, 1, 1, 1, 1, 1],
-        [1, 0, 0, 1, 1, 1, 0, 0, 1, 1],
-        [1, 0, 0, 0, 0, 1, 0, 0, 1, 1],
-        [1, 0, 0, 1, 0, 0, 1, 0, 1, 1]
-    ] 
+    adjacency_matrix = generate_adjacency_matrix(num_nodes=NUMBER_OF_NODES, density=NETWORK_DENSITY)
+   
     try:
         nodes=generate_nodes(
             adj_matrix=adjacency_matrix, 
@@ -63,6 +60,15 @@ def main():
     except Exception as e:
         print(e)
         exit()
+        
+    
+    iid_im, iid_lab, iid_im_wxn, iid_lab_wxn=check_iid(nodes)
+    print(iid_im)
+    print(iid_lab)
+    print(iid_im_wxn)
+    print(iid_lab_wxn)
+    
+    
     
     try:
         selected_clients=server.select_clients(NUMBER_OF_NODES, clients_to_select=CLIENTS_TO_SELECT)
@@ -73,16 +79,15 @@ def main():
         print(e)
         exit()
     
+   
+    
+    
     
     #Sending model to clients    
     server.send_model(nodes) 
-   
-    #Opening logmanager file
-    log_folder = "simulation_logs"
-    if not os.path.exists(log_folder):
-        os.makedirs(log_folder)
-    log_file = open(os.path.join(log_folder, 'job_manager_logs.txt'), 'a')
+
     log_file.write("-"*5 + f" Simulation started at {datetime.now()} " + "-"*5 + "\n")
+    log_file.write(f"Clients selected for training: {selected_clients}\n")
     log_file.flush() 
   
     

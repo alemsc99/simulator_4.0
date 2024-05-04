@@ -12,7 +12,6 @@ from utils import load_trained_model
 class JobHandler:
     def __init__(self, device) -> None:
         
-        self.batch_size = 64
         self.lr = 0.0001
         self.momentum = 0.9
         

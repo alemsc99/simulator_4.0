@@ -8,6 +8,7 @@ from torch.profiler import profile, record_function, ProfilerActivity
 from torch.utils.tensorboard import SummaryWriter
 from gputil_decorator import gputil_decorator
 
+
 writer=SummaryWriter()
 class Net(nn.Module):
     name = 'CustomizedNet'
@@ -48,24 +49,25 @@ def train(net, trainloader, valloader,  optimizer, epochs, log_file, device: str
     print(f"Starting training for {epochs} epochs")
     """Train the network on the training set"""
     criterion = torch.nn.CrossEntropyLoss()
+   
     net.to(device)
     net.train()
     
     print_interval = 1
-    prof = torch.profiler.profile(
-        schedule=torch.profiler.schedule(wait=100, warmup=100, active=100, repeat=1),
-        on_trace_ready=torch.profiler.tensorboard_trace_handler('./simulation_logs/resource_usage'),
-        with_flops=True,
-        profile_memory=True,
-        record_shapes=True,
-        with_stack=True)
-    prof.start()
+    # prof = torch.profiler.profile(
+    #     schedule=torch.profiler.schedule(wait=100, warmup=100, active=100, repeat=1),
+    #     on_trace_ready=torch.profiler.tensorboard_trace_handler('./simulation_logs/resource_usage'),
+    #     with_flops=True,
+    #     profile_memory=True,
+    #     record_shapes=True,
+    #     with_stack=True)
+    # prof.start()
     for epoch in tqdm(range(epochs)):
         running_loss = 0.0
         for i ,(images, labels) in enumerate(tqdm(trainloader)):
-            prof.step()
-            if i >= 100 + 100 + 100:
-                prof.stop()
+            # prof.step()
+            # if i >= 100 + 100 + 100:
+            #     prof.stop()
             images, labels = images.to(device), labels.to(device)
             optimizer.zero_grad()
             outputs = net(images)            
@@ -77,8 +79,8 @@ def train(net, trainloader, valloader,  optimizer, epochs, log_file, device: str
                 log_file.write(f"Epoch [{epoch+1}/{epochs}], Step [{i+1}/{len(trainloader)}], Loss: {running_loss/100:.3f}\n")
                 log_file.flush()
                 running_loss = 0.0
-            if i>5:
-                break
+            # if i>5:
+            #     break
             
       
             

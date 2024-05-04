@@ -1,4 +1,5 @@
 import csv
+import random
 import torch
 from datetime import datetime
 from job import Job, Task
@@ -9,11 +10,77 @@ from torch.utils.data import Subset, DataLoader
 import numpy
 import pandas as pd
 from tabulate import tabulate
+from scipy import stats
+import numpy as np
+from fedlab.utils.dataset.partition import CIFAR10Partitioner
+
+
 
 TEST_RATIO=0.1
 VAL_RATIO=0.1
 
+def check_iid(nodes):
+    
+    threshold=0.05
+    # p_value < threshold => Non IID
+    # p_value > threshold => IID
+    results_im_ttest=np.empty((len(nodes), len(nodes)), dtype=object)
+    results_lab_ttest=np.empty((len(nodes), len(nodes)), dtype=object)
+    results_im_wxn=np.empty((len(nodes), len(nodes)), dtype=object)
+    results_lab_wxn=np.empty((len(nodes), len(nodes)), dtype=object)
+    for i in range(0, len(nodes)):
+        data=[]
+        labels=[]
+        for (im,lab) in nodes[i].trainloader:
+            flattened_tensor=im.flatten()
+            values=flattened_tensor.tolist()
+            data+=values
+            lab=lab.flatten()
+            lab=lab.tolist()
+            labels+=lab
+        for j in range(i+1, len(nodes)):
+            data_two=[]
+            labels_two=[]
+            for (imm, labb) in nodes[j].trainloader:
+                flattened_tensor=imm.flatten()
+                values=flattened_tensor.tolist()
+                data_two+=values
+                labb=labb.flatten()
+                labb=labb.tolist()
+                labels_two+=labb
+            res_im=stats.ttest_ind(np.array(data),np.array(data_two))
+            res_lab=stats.ttest_ind(np.array(labels),np.array(labels_two))
+            pvalue_im, pvalue_lab=res_im.pvalue, res_lab.pvalue
+            res_im_wxn=stats.wilcoxon(np.array(data),np.array(data_two))
+            res_lab_wxn=stats.wilcoxon(np.array(labels),np.array(labels_two))
+            pvalue_im_wxn, pvalue_lab_wxn=res_im_wxn.pvalue, res_lab_wxn.pvalue
+            
+            results_im_ttest[i,j]=(pvalue_im<threshold)
+            results_lab_ttest[i,j]=(pvalue_lab<threshold)
+            results_im_wxn[i,j]=(pvalue_im_wxn<threshold)
+            results_lab_wxn[i,j]=(pvalue_lab_wxn<threshold)
+            
+    return results_im_ttest, results_lab_ttest, results_im_wxn, results_lab_wxn
+            
+            
+    
+    
 
+
+def generate_adjacency_matrix(num_nodes, density):
+    num_ones = int((num_nodes * (num_nodes - 1) / 2) * density) # Calculate the number of ones based on the percentage
+    adjacency_matrix = [[0] * num_nodes for _ in range(num_nodes)] # Initialize an empty adjacency matrix
+    
+    # Generate random positions for ones
+    positions = [(i, j) for i in range(num_nodes) for j in range(i+1, num_nodes)]
+    random.shuffle(positions)
+    
+    # Set ones randomly based on the calculated number of ones
+    for i in range(num_ones):
+        x, y = positions[i]
+        adjacency_matrix[x][y] = adjacency_matrix[y][x] = 1
+    
+    return adjacency_matrix
 
 def write_matrix(results_matrix, simulation_number):
     #Computing variance
@@ -59,14 +126,11 @@ def show_clients_loss(clients_loss, clients_acc, log_file):
 def split_loader(loader,  n_clients, batch_size):
     
     # Calculate the total number of samples in the trainloader
-    total_samples = len(loader.dataset)
-    
+    total_samples = len(loader.dataset)    
     # Calculate the number of samples per client
     samples_per_client = total_samples // n_clients
-
     # Initialize the list for trainloaders of each client
     client_loaders = []
- 
     # Divide the trainloader into equal parts for each client
     for i in range(n_clients):
         # Calculate the indices of samples for the current client
@@ -82,6 +146,41 @@ def split_loader(loader,  n_clients, batch_size):
         client_loaders.append(client_loader)
         
     return client_loaders
+
+from torch.utils.data import Subset, DataLoader
+
+def split_loader_new(loader, n_clients, batch_size, percentage):
+    # Calculate the total number of samples in the trainloader
+    total_samples = len(loader.dataset)
+    
+    # Calculate the number of samples per client
+    total_samples_per_client = total_samples * percentage
+    
+    # Initialize the list for trainloaders of each client
+    client_loaders = []
+
+    # Divide the trainloader into parts for each client
+    for i in range(n_clients):
+        # Calculate the number of samples for the current client
+        client_samples = int(total_samples_per_client)
+        
+        # In case there are remaining samples, distribute them to the first few clients
+        if i < total_samples % n_clients:
+            client_samples += 1
+        
+        # Create a Subset of the dataset for the current client
+        start_index = sum(int(total_samples_per_client) for _ in range(i))
+        end_index = start_index + client_samples
+        subset = Subset(loader.dataset, range(start_index, end_index))
+        
+        # Create a DataLoader for the current client using the Subset
+        client_loader = DataLoader(subset, batch_size=batch_size, shuffle=False)
+        
+        # Add the client's train loader to the list
+        client_loaders.append(client_loader)
+        
+    return client_loaders
+
 
 def generate_nodes(adj_matrix, size, trainloader, valloader, testloader, batch_size, device):
     trainloaders = split_loader(
@@ -100,7 +199,7 @@ def generate_nodes(adj_matrix, size, trainloader, valloader, testloader, batch_s
         n_clients=size,
         batch_size=batch_size
     )
-
+   
     nodes=[]
     for j in range(0, size):
         neighbors = []
@@ -114,9 +213,10 @@ def generate_nodes(adj_matrix, size, trainloader, valloader, testloader, batch_s
                         trainloader=trainloaders[j],
                         valloader=valloaders[j],
                         testloader=testloaders[j],
-                        gpu_fraction=0.2,
+                        gpu_fraction=1.0,
                         device=device
                         ))
+
     return nodes
                 
     
