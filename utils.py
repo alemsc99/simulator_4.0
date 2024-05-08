@@ -1,4 +1,5 @@
 import csv
+import os
 import random
 import torch
 from datetime import datetime
@@ -12,15 +13,64 @@ import pandas as pd
 from tabulate import tabulate
 from scipy import stats
 import numpy as np
-from fedlab.utils.dataset.partition import CIFAR10Partitioner
-
-
+import psutil
+from torchprofile import profile_macs
 
 TEST_RATIO=0.1
 VAL_RATIO=0.1
 
-def check_iid(nodes):
+def measure_latency_cpu_usage(model, device, num_channels, input_size_x, input_size_y):
+    #Latency is the amount of time it takes for a neural network to produce a prediction for a single input sample.
+    dummy_input = torch.randn(1,num_channels,input_size_x,input_size_y, dtype=torch.float).to(device)
+    model.to(device)
+    # INIT LOGGERS
+    starter, ender = torch.cuda.Event(enable_timing=True), torch.cuda.Event(enable_timing=True)
+    repetitions = 300
+    timings=np.zeros((repetitions,1))
+    #GPU-WARM-UP
+    for _ in range(10):
+        _ = model(dummy_input)
+    # MEASURE PERFORMANCE
+    process = psutil.Process()
+    cpu_start = process.cpu_percent()
+    with torch.no_grad():
+        for rep in range(repetitions):
+            starter.record()
+            _ = model(dummy_input)
+            ender.record()
+            # WAIT FOR GPU SYNC
+            torch.cuda.synchronize()
+            curr_time = starter.elapsed_time(ender)
+            timings[rep] = curr_time
+    cpu_end = process.cpu_percent()
+    cpu_usage = cpu_end - cpu_start
+    latency = np.sum(timings) / repetitions
     
+    return latency, cpu_usage
+   
+
+def measure_gpu_throughput_and_macs(model, batch_size, device, num_channels, input_size_x, input_size_y):
+    # The throughput of a neural network is defined as the maximal 
+    # number of input instances the network can process in a unit of time
+    dummy_input = torch.randn(batch_size, num_channels,input_size_x,input_size_y, dtype=torch.float).to(device)
+    model = model.to(device)
+    repetitions=100
+    total_time = 0
+    with torch.no_grad():
+        for rep in range(repetitions):
+            starter, ender = torch.cuda.Event(enable_timing=True),   torch.cuda.Event(enable_timing=True)
+            starter.record()
+            _ = model(dummy_input)
+            ender.record()
+            torch.cuda.synchronize()
+            curr_time = starter.elapsed_time(ender)/1000
+            total_time += curr_time
+    throughput =   (repetitions*batch_size)/total_time
+    macs=profile_macs(model, dummy_input)
+    return throughput, macs
+
+
+def check_iid(nodes):    
     threshold=0.05
     # p_value < threshold => Non IID
     # p_value > threshold => IID
@@ -299,3 +349,26 @@ def read_csv_file(file_name, fj_global_epochs, fj_local_epochs, dataset):
     return jobs
 
 
+def get_inf_params(net, verbose=True, sd=False):
+    if sd:
+        params = net
+    else:
+        params = net.state_dict()
+    tot = 0
+    conv_tot = 0
+    for p in params:
+        no = params[p].view(-1).__len__()
+
+        if ('num_batches_tracked' not in p) and ('running' not in p) and ('mask' not in p):
+            tot += no
+
+            if verbose:
+                print('%s has %d params' % (p, no))
+        if 'conv' in p:
+            conv_tot += no
+
+    if verbose:
+        print('Net has %d conv params' % conv_tot)
+        print('Net has %d params in total' % tot)
+
+    return tot

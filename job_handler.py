@@ -41,7 +41,8 @@ class JobHandler:
         
             if job.task.name == "Training":                
                 try:
-                    server.start_training(training_clients=training_clients,
+                    server.start_training(job_id=job.id,
+                                          training_clients=training_clients,
                                           momentum=self.momentum,
                                           lr=self.lr, 
                                           log_file=log_file, 

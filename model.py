@@ -31,6 +31,8 @@ class Net(nn.Module):
         x = self.fc3(x)
 
         return x
+    
+    
 # Function to print GPU and CPU utilization
 def print_utilization(device, log_file):
     gpu_usage = torch.cuda.memory_allocated(0) / (1024 ** 3)  # GPU memory usage in GB
@@ -42,7 +44,7 @@ def print_utilization(device, log_file):
     
     
     
-@gputil_decorator
+
 def train(net, trainloader, valloader,  optimizer, epochs, log_file, device: str):
     sparsity, nnz=calculate_sparsity_and_NNZ(net)
     log_file.write(f"Sparsity: {sparsity}, NNZ: {nnz}\n")
@@ -53,7 +55,7 @@ def train(net, trainloader, valloader,  optimizer, epochs, log_file, device: str
     net.to(device)
     net.train()
     
-    print_interval = 1
+    print_interval = 5
     # prof = torch.profiler.profile(
     #     schedule=torch.profiler.schedule(wait=100, warmup=100, active=100, repeat=1),
     #     on_trace_ready=torch.profiler.tensorboard_trace_handler('./simulation_logs/resource_usage'),
@@ -86,15 +88,16 @@ def train(net, trainloader, valloader,  optimizer, epochs, log_file, device: str
             
     
        # Validation
-        val_loss, val_accuracy = eval(net, valloader, log_file, device)
-        writer.add_scalar("./simulation_logs/val_loss", val_loss, epoch)
-        writer.add_scalar("./simulation_logs/val_accuracy", val_accuracy, epoch)
-        writer.add_scalar("./simulation_logs/training_loss", running_loss/1000, epoch)
-        log_file.write(f"Validation Loss: {val_loss}, Validation Accuracy: {val_accuracy}\n")
-        print(f"\nValidation Loss: {val_loss}, Validation Accuracy: {val_accuracy}\n")
-        log_file.flush()
         if epoch % print_interval == 0:
-          print_utilization(device, log_file)
+            val_loss, val_accuracy = eval(net, valloader, log_file, device)
+            writer.add_scalar("./simulation_logs/val_loss", val_loss, epoch)
+            writer.add_scalar("./simulation_logs/val_accuracy", val_accuracy, epoch)
+            writer.add_scalar("./simulation_logs/training_loss", running_loss/1000, epoch)
+            log_file.write(f"Validation Loss: {val_loss}, Validation Accuracy: {val_accuracy}\n")
+            print(f"\nValidation Loss: {val_loss}, Validation Accuracy: {val_accuracy}\n")
+            log_file.flush()
+        
+            #print_utilization(device, log_file)
 
     writer.flush()
                 
@@ -135,6 +138,8 @@ def test(net, testloader, log_file, device: str):
     accuracy = correct/len(testloader.dataset)
     log_file.write(f"Loss: {loss}, Accuracy: {accuracy}\n")
     return loss, accuracy
+
+
 
 
 

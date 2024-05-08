@@ -1,38 +1,30 @@
+from resnet import ResNet18
+import torch
+from ptflops import get_model_complexity_info
+import re
+import torch.nn as nn
+import torch.nn.utils.prune as prune
+import time
+import psutil
+from utils import measure_latency_cpu_usage, measure_gpu_throughput_and_macs
 import tensorflow as tf
-import subprocess
 
-def check_gpu_memory():
-    # Use nvidia-smi command to get GPU memory usage
-    result = subprocess.run(['nvidia-smi', '--query-gpu=memory.used', '--format=csv,nounits,noheader'], stdout=subprocess.PIPE)
-    return float(result.stdout.strip())
 
-def run_with_fraction(fraction):
-    # Define GPU options
-    gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=fraction)
-    config = tf.compat.v1.ConfigProto(gpu_options=gpu_options)
+device="cuda" if torch.cuda.is_available() else "cpu"      
+model=ResNet18(num_classes=10, input_channels=3).to(device)#MODEL DEFINITION
 
-    # Create TensorFlow session with specified configuration
-    with tf.compat.v1.Session(config=config) as sess:
-        # Define a simple TensorFlow computation graph
-        a = tf.constant(5.0)
-        b = tf.constant(3.0)
-        c = tf.add(a, b)
+
+# for name, module in model.named_modules():
+#         if isinstance(module, (nn.Conv2d, nn.Linear)):  # Pruning su Conv2d, Linear
+#             m=prune.ln_structured(module, 'weight', 0.8,n =float("-inf"), dim=1 )
+#             m=prune.remove(m, name='weight')
+
+
+latency, cpu_usage=measure_latency_cpu_usage(model, device)
+print(f"Latency: {latency} ms\n")
+print(f"CPU Usage: {cpu_usage}%\n")
+throughput, macs=measure_gpu_throughput_and_macs(model, 128, device)
+print(f"Throughput: {throughput}\n")
+print(f"MACs: {macs / (1024 ** 3)} G\n")
+print(f"FLOPs: {(2*macs) / (1024 ** 3)} G\n")
         
-        # Execute the graph and fetch the result
-        result = sess.run(c)
-        print("Result:", result)
-
-# Run with fraction 0.000001
-print("Memory usage with fraction 0.000001:", check_gpu_memory())
-run_with_fraction(0.000001)
-
-# Run with fraction 0.01
-print("Memory usage with fraction 0.01:", check_gpu_memory())
-run_with_fraction(0.01)
-
-
-
-
-# Run with fraction 0.01
-print("Memory usage with fraction 0.5:", check_gpu_memory())
-run_with_fraction(0.5)

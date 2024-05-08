@@ -67,7 +67,7 @@ class Client:
         # session = tf.compat.v1.Session(config=config)
      
         
-        _, self.GPU_usage_table=train(net=self.model,
+        train(net=self.model,
               trainloader=self.trainloader, 
               valloader=self.valloader, 
               optimizer=optim, 

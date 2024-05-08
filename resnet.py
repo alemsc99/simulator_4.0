@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from tqdm import tqdm
 
 # Define the basic convolutional block
 class BasicBlock(nn.Module):
@@ -59,6 +60,19 @@ class ResNet(nn.Module):
         out = out.view(out.size(0), -1)
         out = self.linear(out)
         return out
+    
+    def predict(self,model, testloader, device):
+        criterion = torch.nn.CrossEntropyLoss()
+        loss = 0.0
+        model.eval()
+        model.to(device)
+        with torch.no_grad():        
+            for data in tqdm(testloader):           
+                images, labels = data[0].to(device), data[1].to(device)
+                outputs = model(images)
+                loss += criterion(outputs, labels).item()
+        
+        
 
 
 

@@ -11,9 +11,7 @@ from collections import OrderedDict
 import torch
 from model import test
 from pruning import random_unstructured_pruning, local_random_structured_pruning
-import GPUtil
-
-
+from utils import measure_latency_cpu_usage, measure_gpu_throughput_and_macs
 
 
 PRUNED_TRAINED_FILE='lstrainedpruned'
@@ -21,23 +19,42 @@ PRUNED_FILE='lspruned'
 
 
 class Server:
-    def __init__(self, number_of_clients, testloader, model, device):
+    def __init__(self, number_of_clients, testloader, model, number_of_channels, input_size_x, input_size_y,device):
         self.number_of_clients = number_of_clients
         self.model=model
         self.testloader = testloader
         self.model_parameters=OrderedDict((key, 0) for key in self.model.state_dict().keys())
         self.model_saving_path="./models/"
+        self.comp_model_saving_path="./models/"
+        self.number_of_channels = number_of_channels
+        self.input_size_x = input_size_x
+        self.input_size_y = input_size_y
         self.device=device
         
         
         
-    def save_model(self, log_file):
-        
-        path=f"{self.model_saving_path}trained_model.pth"
+    def save_model(self, log_file, pruning_rate):
+        if pruning_rate==0.0:
+            filename='trained_model'   
+        else:
+            pruning_rate_str= "{:02d}".format(int(pruning_rate * 10))
+            filename=f"pruned_{pruning_rate_str}"    
+        path=f"{self.model_saving_path}{filename}.pth"
         torch.save(self.model.state_dict(), f"{path}")
         log_file.write(f"Model saved at {path}\n")
         print(f"Model saved at {path}\n")
-        GPUtil.showUtilization(all=False, attrList=None, useOldCode=False)
+        latency, cpu_usage=measure_latency_cpu_usage(self.model, self.device, self.number_of_channels, self.input_size_x, self.input_size_y)
+        log_file.write(f"Latency: {latency} ms\n")
+        log_file.write(f"CPU Usage: {cpu_usage}%\n")
+        log_file.flush()
+        throughput, macs=measure_gpu_throughput_and_macs(self.model, 128, self.device, self.number_of_channels, self.input_size_x, self.input_size_y)
+        log_file.write(f"Throughput: {throughput}\n")
+        log_file.flush()
+        log_file.write(f"MACs: {macs / (1024 ** 3)} G\n")
+        log_file.flush()
+        log_file.write(f"FLOPs: {(2*macs) / (1024 ** 3)} G\n")
+        log_file.flush()
+        
             
 
     
@@ -108,7 +125,7 @@ class Server:
         return server_loss, server_acc, clients_loss, clients_acc
 
 
-    def start_training(self, training_clients, momentum, lr, log_file, global_epochs, local_epochs, trained_model=None):
+    def start_training(self, job_id,training_clients, momentum, lr, log_file, global_epochs, local_epochs, trained_model=None):
         
         if trained_model is not None:
             self.model=trained_model
@@ -124,8 +141,7 @@ class Server:
                 client.model.to(self.device)
                 # Training the client
                 params, _, _=client.fit(local_epochs, lr, momentum, log_file)
-                if epoch==global_epochs-1:
-                    client.GPU_usage(log_file)
+                
                 # Collecting received weights
                 self.aggregate_params(params)
             # averaging reveived weights
@@ -139,15 +155,16 @@ class Server:
             else:
                 log_file.write("Cannot update parameters on server because the model is None\n")
                 log_file.flush()
-        if global_epochs==10 and local_epochs==10:
-            self.save_model(log_file=log_file)
+        if job_id==1:
+            self.save_model(log_file=log_file, pruning_rate=0.0)
         
         
     
     def prune_fn(self, task, clients, device, log_file):
         if task.name== "Pruning":
             try:
-                random_unstructured_pruning(pruning_rate=task.pruning_rate, device=device)               
+                random_unstructured_pruning(pruning_rate=task.pruning_rate, device=device)  
+                self.model_parameters=self.model.state_dict()              
             except Exception as e:
                 log_file.write(f"Error running the script: {e}")
                 log_file.flush()
@@ -159,11 +176,11 @@ class Server:
                     device=device) 
                 self.model_parameters=self.model.state_dict()  
                 for client in clients:
-                    client.set_parameters(log_file, self.model.state_dict().values())          
+                    client.set_parameters(log_file, self.model.state_dict().values())
+                self.save_model(log_file, task.pruning_rate)          
             except Exception as e:
                 log_file.write(f"Error running the script: {e}")
-                log_file.flush()
-                
+                log_file.flush()                
         else:
             log_file.write(f"Task {task.name} not recognized")
             log_file.flush()
