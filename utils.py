@@ -1,3 +1,4 @@
+from collections import defaultdict
 import csv
 import os
 import random
@@ -7,7 +8,7 @@ from job import Job, Task
 from resnet import ResNet18
 from pruning import retrieve_file
 from client import Client
-from torch.utils.data import Subset, DataLoader
+from torch.utils.data import Subset, DataLoader, SubsetRandomSampler
 import numpy
 import pandas as pd
 from tabulate import tabulate
@@ -197,14 +198,17 @@ def split_loader(loader,  n_clients, batch_size):
         
     return client_loaders
 
-from torch.utils.data import Subset, DataLoader
-
-def split_loader_new(loader, n_clients, batch_size, percentage):
+def split_loader_new(loader, n_clients, batch_size):
     # Calculate the total number of samples in the trainloader
     total_samples = len(loader.dataset)
     
+    # Create a dictionary to store indices for each class
+    class_indices = defaultdict(list)
+    for idx, (_, label) in enumerate(loader.dataset):
+        class_indices[label].append(idx)
+    
     # Calculate the number of samples per client
-    total_samples_per_client = total_samples * percentage
+    total_samples_per_client = total_samples // (n_clients)
     
     # Initialize the list for trainloaders of each client
     client_loaders = []
@@ -218,13 +222,25 @@ def split_loader_new(loader, n_clients, batch_size, percentage):
         if i < total_samples % n_clients:
             client_samples += 1
         
-        # Create a Subset of the dataset for the current client
-        start_index = sum(int(total_samples_per_client) for _ in range(i))
-        end_index = start_index + client_samples
-        subset = Subset(loader.dataset, range(start_index, end_index))
+        # Initialize a list to store indices for the current client
+        client_indices = []
         
-        # Create a DataLoader for the current client using the Subset
-        client_loader = DataLoader(subset, batch_size=batch_size, shuffle=False)
+        # Iterate over each class and shuffle the indices
+        for indices in class_indices.values():
+            np.random.shuffle(indices)
+        
+        # Select indices for the current client
+        for indices in class_indices.values():
+            client_indices.extend(indices[:client_samples // n_clients])
+        
+        # Shuffle the indices for the current client
+        np.random.shuffle(client_indices)
+        
+        # Create a SubsetRandomSampler for the current client
+        sampler = SubsetRandomSampler(client_indices)
+        
+        # Create a DataLoader for the current client using the SubsetRandomSampler
+        client_loader = DataLoader(loader.dataset, batch_size=batch_size, sampler=sampler)
         
         # Add the client's train loader to the list
         client_loaders.append(client_loader)
@@ -233,18 +249,18 @@ def split_loader_new(loader, n_clients, batch_size, percentage):
 
 
 def generate_nodes(adj_matrix, size, trainloader, valloader, testloader, batch_size, device):
-    trainloaders = split_loader(
+    trainloaders = split_loader_new(
         loader=trainloader,
         n_clients=size,
         batch_size=batch_size
     )
-    valloaders = split_loader(
+    valloaders = split_loader_new(
         loader=valloader,
         n_clients=size,
         batch_size=batch_size
     )
     
-    testloaders=split_loader(
+    testloaders=split_loader_new(
         loader=testloader,
         n_clients=size,
         batch_size=batch_size
@@ -260,7 +276,8 @@ def generate_nodes(adj_matrix, size, trainloader, valloader, testloader, batch_s
         nodes.append(Client(
                         id=j,
                         neighbors=neighbors,
-                        trainloader=trainloaders[j],
+                        #trainloader=trainloaders[j],
+                        trainloader=trainloader,
                         valloader=valloaders[j],
                         testloader=testloaders[j],
                         gpu_fraction=1.0,

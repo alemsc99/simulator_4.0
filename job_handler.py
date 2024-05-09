@@ -14,7 +14,6 @@ class JobHandler:
         
         self.lr = 0.0001
         self.momentum = 0.9
-        
         self.device=device
        
 

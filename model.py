@@ -10,6 +10,7 @@ from gputil_decorator import gputil_decorator
 
 
 writer=SummaryWriter()
+SIMULATION_LOGS_FOLDER='./simulation_logs'
 class Net(nn.Module):
     name = 'CustomizedNet'
     
@@ -55,7 +56,7 @@ def train(net, trainloader, valloader,  optimizer, epochs, log_file, device: str
     net.to(device)
     net.train()
     
-    print_interval = 5
+    print_interval = 1
     # prof = torch.profiler.profile(
     #     schedule=torch.profiler.schedule(wait=100, warmup=100, active=100, repeat=1),
     #     on_trace_ready=torch.profiler.tensorboard_trace_handler('./simulation_logs/resource_usage'),
@@ -90,16 +91,16 @@ def train(net, trainloader, valloader,  optimizer, epochs, log_file, device: str
        # Validation
         if epoch % print_interval == 0:
             val_loss, val_accuracy = eval(net, valloader, log_file, device)
-            writer.add_scalar("./simulation_logs/val_loss", val_loss, epoch)
-            writer.add_scalar("./simulation_logs/val_accuracy", val_accuracy, epoch)
-            writer.add_scalar("./simulation_logs/training_loss", running_loss/1000, epoch)
+            writer.add_scalar(f"{SIMULATION_LOGS_FOLDER}/val_loss", val_loss, epoch)
+            writer.add_scalar(f"{SIMULATION_LOGS_FOLDER}/training_loss", running_loss/1000, epoch)
+            writer.flush()
             log_file.write(f"Validation Loss: {val_loss}, Validation Accuracy: {val_accuracy}\n")
             print(f"\nValidation Loss: {val_loss}, Validation Accuracy: {val_accuracy}\n")
             log_file.flush()
         
             #print_utilization(device, log_file)
 
-    writer.flush()
+   
                 
 def eval(net, valloader, log_file, device: str):
     
@@ -131,7 +132,7 @@ def test(net, testloader, log_file, device: str):
             images, labels = data[0].to(device), data[1].to(device)
             outputs = net(images)
             loss += criterion(outputs, labels).item()
-            writer.add_scalar("./simulation_logs/test_loss", loss)
+            writer.add_scalar(f"{SIMULATION_LOGS_FOLDER}/test_loss", loss)
             _, predicted = torch.max(outputs.data, 1)
             correct += (predicted == labels).sum().item()
 

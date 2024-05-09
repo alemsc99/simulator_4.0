@@ -9,6 +9,7 @@ from dataset import prepare_dataset
 from resnet import ResNet18
 from utils import check_iid
 
+
 JOBS_FILE= './jobs.csv'
 NUMBER_OF_NODES=10
 DATASET= 'cifar10'
@@ -16,11 +17,11 @@ BATCH_SIZE=64
 VAL_RATIO=0.1
 NUM_CLASSES=10
 INPUT_CHANNELS=3
-INPUT_SIZE_X=28
-INPUT_SIZE_Y=28
+INPUT_SIZE_X=32
+INPUT_SIZE_Y=32
 CLIENTS_TO_SELECT=2
-FJ_GLOBAL_EPOCHS=20
-FJ_LOCAL_EPOCHS=20
+FJ_GLOBAL_EPOCHS=4
+FJ_LOCAL_EPOCHS=4
 NUMBER_OF_SIMULATIONS=5
 NETWORK_DENSITY=0.5
 
@@ -37,8 +38,8 @@ def main():
     for i in range(0,NUMBER_OF_SIMULATIONS):
         #Prepare dataset     
         trainloader, valloader, testloader=prepare_dataset(DATASET, BATCH_SIZE, VAL_RATIO)
-
-
+        
+        
         #Network definition
         server=Server(
             number_of_clients=NUMBER_OF_NODES, 

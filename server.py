@@ -60,11 +60,27 @@ class Server:
     
         
     def average_params(self, num_selected_clients):
-        params=list(self.model_parameters.values())
-        averaged_params=[x/num_selected_clients for x in params]
-        new_params=zip(self.model.state_dict().keys(), averaged_params)
-        self.model_parameters=OrderedDict({k: torch.Tensor(v) for k,v in new_params})
-        self.model.load_state_dict(self.model_parameters, strict=True)
+        for key, values in self.model_parameters.items():
+            self.model_parameters[key] = values/num_selected_clients
+        
+        
+    def aggregate_params_dict(self, parameters_dict):        
+        merged_dict = OrderedDict()
+
+        for key, value in parameters_dict.items():
+            if key in merged_dict:
+                merged_dict[key] += value
+            else:
+                merged_dict[key] = value
+
+        for key, value in self.model_parameters.items():
+            if key in merged_dict:
+                res=merged_dict[key]+value
+                merged_dict[key]=res
+            else:
+                merged_dict[key] = value
+                
+        self.model_parameters=merged_dict
    
     def aggregate_params(self, parameters):        
         starting_params=list(self.model_parameters.values())
@@ -96,7 +112,7 @@ class Server:
         log_file.flush()
         print("Starting testing on clients \n")
         for client in clients:
-            client.set_parameters(log_file, self.model.state_dict().values())
+            client.set_parameters(log_file, self.model.state_dict())
             loss, acc=client.client_test(log_file, device)
             clients_loss.append(loss)
             clients_acc.append(acc)
@@ -133,17 +149,17 @@ class Server:
         for epoch in range(global_epochs):
             print(f"Starting global epoch {epoch}")
             # Retrieving weights to send to clients
-            params_to_send=self.model.state_dict().values()
+            params_to_send_dict=self.model.state_dict()
             for client in training_clients:
                 # Updating clients' weights after the first global epoch
-                if epoch>1:
-                    client.set_parameters(log_file, params_to_send)
+                if epoch>0:
+                    client.set_parameters(log_file, params_to_send_dict)
                 client.model.to(self.device)
                 # Training the client
-                params, _, _=client.fit(local_epochs, lr, momentum, log_file)
+                params_dict, _, _=client.fit(local_epochs, lr, momentum, log_file)
                 
                 # Collecting received weights
-                self.aggregate_params(params)
+                self.aggregate_params_dict(params_dict)
             # averaging reveived weights
             self.average_params(len(training_clients))
             # aggiornamento dei pesi del server 

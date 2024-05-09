@@ -4,10 +4,9 @@ The Client class has to:
 - train the model on the local training set 
 - send weights to the server
 '''
-from collections import OrderedDict
 import torch
 from model import train, test
-import tensorflow as tf
+
 
 
 class Client:
@@ -32,20 +31,18 @@ class Client:
         log_file.flush()
     
     
-    def set_parameters(self, log_file, parameters):
+    def set_parameters(self, log_file, parameters_dict):
         #it recives the parameters from the server
-        params_dict=zip(self.model.state_dict().keys(), parameters)
-        state_dict=OrderedDict({k: torch.Tensor(v) for k,v in params_dict})
         if self.model is not None:
-            self.model.load_state_dict(state_dict, strict=True)
+            self.model.load_state_dict(parameters_dict, strict=True)
             log_file.write(f"Model parameters updated on client {self.id}\n")
             print(f"Model parameters updated on client {self.id}\n")
         else:
             log_file.write(f"Cannot update parameters on client {self.id} because the model is None\n")
             
-    def get_parameters(self, log_file):
+    def get_parameters(self):
         #it sends back parameters to the server
-        parameters=self.model.state_dict().values()
+        parameters=self.model.state_dict()
         return parameters
     
     
@@ -79,7 +76,7 @@ class Client:
         # it also returns the number of samples used by this client for training
         # and metrics about training
 
-        return self.get_parameters({}), len(self.trainloader), {}
+        return self.get_parameters(), len(self.trainloader), {}
 
 
 

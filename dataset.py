@@ -6,6 +6,7 @@ from torchvision.datasets import MNIST, CIFAR10
 
 
 
+
 def get_mnist(data_path:str='./data'):
 
     tr= Compose([ToTensor(), Normalize((0.1307), (0.3081,))])
@@ -23,7 +24,7 @@ def get_cifar10(data_path:str='./data'):
     return trainset, testset
 
 
-def prepare_dataset(dataset_name, batch_size:int, val_ratio: float=0.1):
+def prepare_dataset(dataset_name, batch_size:int, val_ratio):
     # num_partions= number of clients= number of partitions to create starting from the training set
     # batch_size= assuming it's the same for every client
     # val_ratio= ratio of validation samples wrt training samples
