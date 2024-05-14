@@ -1,3 +1,4 @@
+import tensorflow as tf
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -9,32 +10,9 @@ from torch.utils.tensorboard import SummaryWriter
 from gputil_decorator import gputil_decorator
 
 
+
 writer=SummaryWriter()
 SIMULATION_LOGS_FOLDER='./simulation_logs'
-class Net(nn.Module):
-    name = 'CustomizedNet'
-    
-    def __init__(self, num_classes: int, input_channels: int) -> None:
-        super(Net, self).__init__()
-        self.conv1 = nn.Conv2d(input_channels, 6, 5)
-        self.pool = nn.MaxPool2d(2, 2)
-        self.conv2 = nn.Conv2d(6, 16, 5)
-        self.fc1 = nn.Linear(16 * 4 * 4, 120)
-        self.fc2 = nn.Linear(120, 84)
-        self.fc3 = nn.Linear(84, num_classes)
-        
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x = self.pool(F.relu(self.conv1(x)))
-        x = self.pool(F.relu(self.conv2(x)))
-        x = x.view(-1, 16 * 4 * 4)
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = self.fc3(x)
-
-        return x
-    
-    
 # Function to print GPU and CPU utilization
 def print_utilization(device, log_file):
     gpu_usage = torch.cuda.memory_allocated(0) / (1024 ** 3)  # GPU memory usage in GB
@@ -48,6 +26,8 @@ def print_utilization(device, log_file):
     
 
 def train(net, trainloader, valloader,  optimizer, epochs, gradient_clipping,log_file, device: str):
+   
+
     sparsity, nnz=calculate_sparsity_and_NNZ(net)
     log_file.write(f"Sparsity: {sparsity}, NNZ: {nnz}\n")
     print(f"Starting training for {epochs} epochs")
