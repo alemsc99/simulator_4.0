@@ -47,7 +47,7 @@ def print_utilization(device, log_file):
     
     
 
-def train(net, trainloader, valloader,  optimizer, epochs, log_file, device: str):
+def train(net, trainloader, valloader,  optimizer, epochs, gradient_clipping,log_file, device: str):
     sparsity, nnz=calculate_sparsity_and_NNZ(net)
     log_file.write(f"Sparsity: {sparsity}, NNZ: {nnz}\n")
     print(f"Starting training for {epochs} epochs")
@@ -91,6 +91,8 @@ def train(net, trainloader, valloader,  optimizer, epochs, log_file, device: str
             outputs = net(images)            
             loss = criterion(outputs, labels)
             loss.backward()
+            if gradient_clipping is not None:
+                nn.utils.clip_grad_norm_(net.parameters(), gradient_clipping)
             optimizer.step()
             running_loss += loss.item()
             if i % 10== 9:    # Print every 100 mini-batches

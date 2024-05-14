@@ -46,7 +46,7 @@ class Client:
         return parameters
     
     
-    def fit(self,  epochs, optimizer, log_file):
+    def fit(self,  epochs, optimizer, gradient_clipping, log_file):
         #parameters is a list of numpy arrays representing the current state of the global model
         #config is a python dictionary with additional information
 
@@ -68,6 +68,7 @@ class Client:
               valloader=self.valloader, 
               optimizer=optimizer, 
               epochs=epochs, 
+              gradient_clipping=gradient_clipping,
               log_file=log_file, 
               device=self.device)
 

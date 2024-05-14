@@ -9,10 +9,12 @@ from dataset import prepare_dataset
 
 
 
-BACKBONE_NAME='VGG16'
-JOBS_FILE= './jobs.csv'
-NUMBER_OF_NODES=10
-DATASET= 'cifar10'
+BACKBONE_NAME='CNN'
+JOBS_FILE='./jobs.csv'
+NUMBER_OF_NODES= 10
+DATASET='cifar10'
+STEP_SIZE= 5 # LR scheduler step
+GAMMA=0.1 #LR scheduler factor
 BATCH_SIZE=64
 VAL_RATIO=0.1
 CLIENTS_TO_SELECT=1
@@ -20,8 +22,11 @@ FJ_GLOBAL_EPOCHS=4
 FJ_LOCAL_EPOCHS=5
 NUMBER_OF_SIMULATIONS=5
 NETWORK_DENSITY=0.5
-LR=0.0001
+LR=0.001
 MOMENTUM=0.9
+GRADIENT_CLIPPING=None
+
+
 def main():
     
     device="cuda" if torch.cuda.is_available() else "cpu"  
@@ -49,6 +54,8 @@ def main():
             input_size_y=input_size_y,
             lr=LR,
             momentum=MOMENTUM,
+            step_size=STEP_SIZE,
+            gamma=GAMMA,
             device=device)
         
         adjacency_matrix = generate_adjacency_matrix(num_nodes=NUMBER_OF_NODES, density=NETWORK_DENSITY)
@@ -90,6 +97,7 @@ def main():
 
         log_file.write("-"*5 + f" Simulation started at {datetime.now()} " + "-"*5 + "\n")
         log_file.write(f'Device: {device} \n')
+        log_file.write(f"Backbone: {BACKBONE_NAME} \n")
         log_file.write(f"Clients selected for training: {selected_clients}\n")
         log_file.flush() 
     
@@ -112,6 +120,9 @@ def main():
                                remaining_clients=remaining_clients,
                                input_channels=input_channels,
                                num_classes=num_classes,
+                               gradient_clipping=GRADIENT_CLIPPING,
+                               input_size=input_size_x,
+                               backbone=BACKBONE_NAME,
                                simulation_number=i
                                )
        

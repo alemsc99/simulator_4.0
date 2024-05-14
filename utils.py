@@ -1,4 +1,6 @@
 import sys
+
+from backbones.cnn import ConvNeuralNet
 sys.path.append('./backbones')
 from collections import defaultdict
 import csv
@@ -32,6 +34,8 @@ def define_model(backbone_name, num_classes, input_channels, input_size):
         model=ResNet50(num_classes=num_classes, input_channels=input_channels)#MODEL DEFINITION
     elif backbone_name=='VGG16':
         model=VGG16(input_channels=input_channels, input_size=input_size, num_classes=num_classes, dropout_prob=0.0)#MODEL DEFINITION
+    elif backbone_name=='CNN':
+        model=ConvNeuralNet(num_classes=num_classes, input_channels=input_channels)#MODEL DEFINITION
     else:
         raise ValueError("Backbone name must be either ResNet18, ResNet50, VGG16 or CNN") 
     
@@ -305,9 +309,9 @@ def generate_nodes(adj_matrix, size, trainloader, valloader, testloader, batch_s
                 
     
 
-def load_trained_model(device, filename, input_channels, num_classes):
+def load_trained_model(filename, input_channels, num_classes, input_size, backbone):
     trained_model=retrieve_file(folder="./models", file_name=filename)
-    model=ResNet18(num_classes=num_classes, input_channels=input_channels).to(device)
+    model=define_model(backbone, num_classes, input_channels, input_size)
     model.load_state_dict(torch.load(trained_model))
     return model
 

@@ -12,17 +12,18 @@ import torch
 from model import test
 from pruning import random_unstructured_pruning, local_random_structured_pruning
 from utils import measure_latency_cpu_usage, measure_gpu_throughput_and_macs
-
+from torch.optim.lr_scheduler import StepLR
 
 PRUNED_TRAINED_FILE='lstrainedpruned'
 PRUNED_FILE='lspruned'
 
 
 class Server:
-    def __init__(self, number_of_clients, testloader, model, number_of_channels, input_size_x, input_size_y, lr, momentum, device):
+    def __init__(self, number_of_clients, testloader, model, number_of_channels, input_size_x, input_size_y, lr, momentum, step_size, gamma, device):
         self.number_of_clients = number_of_clients
         self.model=model
         self.optimizer=torch.optim.SGD(self.model.parameters(), lr=lr, momentum=momentum)
+        self.scheduler=StepLR(optimizer=self.optimizer, step_size= step_size, gamma=gamma)
         self.testloader = testloader
         self.model_parameters=OrderedDict((key, 0) for key in self.model.state_dict().keys())
         self.model_saving_path="./models/"
@@ -142,12 +143,15 @@ class Server:
         return server_loss, server_acc, clients_loss, clients_acc
 
 
-    def start_training(self, job_id,training_clients, log_file, global_epochs, local_epochs, trained_model=None):
+    def start_training(self, job_id,training_clients, log_file, global_epochs, local_epochs, gradient_clipping,trained_model=None):
         
         if trained_model is not None:
             self.model=trained_model
         
         for epoch in range(global_epochs):
+            self.scheduler.step()  # Update the learning rate
+            log_file.write("New learning rate: " + str(self.optimizer.param_groups[0]['lr'])+'\n')
+            log_file.write(f"Starting global epoch {epoch}\n")
             print(f"Starting global epoch {epoch}")
             # Retrieving weights to send to clients
             #params_to_send_dict=self.model.state_dict()
@@ -157,7 +161,7 @@ class Server:
                 #     client.set_parameters(log_file, params_to_send_dict)
                 
                 # Training the client
-                params_dict, _, _=client.fit(local_epochs, self.optimizer, log_file)
+                params_dict, _, _=client.fit(local_epochs, self.optimizer, gradient_clipping, log_file)
                 
                 # Collecting received weights
                 self.aggregate_params_dict(params_dict)

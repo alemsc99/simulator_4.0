@@ -15,7 +15,7 @@ class JobHandler:
 
 
 
-    def handle_job(self, jobs_list, log_file, device,server, training_clients, remaining_clients, input_channels,num_classes, simulation_number):
+    def handle_job(self, jobs_list, log_file, device,server, training_clients, remaining_clients, input_channels,num_classes, gradient_clipping, input_size, backbone, simulation_number):
         number_of_clients=len(remaining_clients)+len(training_clients)
         results_matrix=numpy.zeros((5, number_of_clients))
         line_to_replace=0
@@ -29,7 +29,7 @@ class JobHandler:
             
             if job.task.pre_trained:
                 filename='trained_model.pth'
-                trained_model=load_trained_model(device, filename, input_channels, num_classes)      
+                trained_model=load_trained_model(filename, input_channels, num_classes, input_size, backbone)      
             
         
             if job.task.name == "Training":                
@@ -39,6 +39,7 @@ class JobHandler:
                                           log_file=log_file, 
                                           global_epochs=job.global_epochs,
                                           local_epochs=job.local_epochs,
+                                          gradient_clipping=gradient_clipping,
                                           trained_model=trained_model)
                     #self.training_function(log_file, job.task.pruning_rate, job.num_epochs, server, selected_clients)
                 except Exception as e:
