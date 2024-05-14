@@ -1,11 +1,11 @@
+import sys
+sys.path.append('./backbones')
 from collections import defaultdict
 import csv
-import os
 import random
 import torch
 from datetime import datetime
 from job import Job, Task
-from resnet import ResNet18
 from pruning import retrieve_file
 from client import Client
 from torch.utils.data import Subset, DataLoader, SubsetRandomSampler
@@ -16,10 +16,27 @@ from scipy import stats
 import numpy as np
 import psutil
 from torchprofile import profile_macs
+from backbones.resnet18 import ResNet18
+from backbones.resnet50 import ResNet50
+from backbones.vgg import VGG16
 
 TEST_RATIO=0.1
 VAL_RATIO=0.1
 
+
+def define_model(backbone_name, num_classes, input_channels, input_size):
+    
+    if backbone_name=='ResNet18':
+        model=ResNet18(num_classes=num_classes, input_channels=input_channels)#MODEL DEFINITION
+    elif backbone_name=='ResNet50':
+        model=ResNet50(num_classes=num_classes, input_channels=input_channels)#MODEL DEFINITION
+    elif backbone_name=='VGG16':
+        model=VGG16(input_channels=input_channels, input_size=input_size, num_classes=num_classes, dropout_prob=0.0)#MODEL DEFINITION
+    else:
+        raise ValueError("Backbone name must be either ResNet18, ResNet50, VGG16 or CNN") 
+    
+    return model
+    
 def measure_latency_cpu_usage(model, device, num_channels, input_size_x, input_size_y):
     #Latency is the amount of time it takes for a neural network to produce a prediction for a single input sample.
     dummy_input = torch.randn(1,num_channels,input_size_x,input_size_y, dtype=torch.float).to(device)
@@ -208,7 +225,7 @@ def split_loader_new(loader, n_clients, batch_size):
         class_indices[label].append(idx)
     
     # Calculate the number of samples per client
-    total_samples_per_client = total_samples // (n_clients)
+    total_samples_per_client = total_samples // (n_clients*2)
     
     # Initialize the list for trainloaders of each client
     client_loaders = []
@@ -226,15 +243,15 @@ def split_loader_new(loader, n_clients, batch_size):
         client_indices = []
         
         # Iterate over each class and shuffle the indices
-        for indices in class_indices.values():
-            np.random.shuffle(indices)
+        # for indices in class_indices.values():
+        #     np.random.shuffle(indices)
         
         # Select indices for the current client
         for indices in class_indices.values():
             client_indices.extend(indices[:client_samples // n_clients])
         
         # Shuffle the indices for the current client
-        np.random.shuffle(client_indices)
+        #np.random.shuffle(client_indices)
         
         # Create a SubsetRandomSampler for the current client
         sampler = SubsetRandomSampler(client_indices)
@@ -249,18 +266,18 @@ def split_loader_new(loader, n_clients, batch_size):
 
 
 def generate_nodes(adj_matrix, size, trainloader, valloader, testloader, batch_size, device):
-    trainloaders = split_loader_new(
+    trainloaders = split_loader(
         loader=trainloader,
         n_clients=size,
         batch_size=batch_size
     )
-    valloaders = split_loader_new(
+    valloaders = split_loader(
         loader=valloader,
         n_clients=size,
         batch_size=batch_size
     )
     
-    testloaders=split_loader_new(
+    testloaders=split_loader(
         loader=testloader,
         n_clients=size,
         batch_size=batch_size
@@ -276,8 +293,8 @@ def generate_nodes(adj_matrix, size, trainloader, valloader, testloader, batch_s
         nodes.append(Client(
                         id=j,
                         neighbors=neighbors,
-                        #trainloader=trainloaders[j],
-                        trainloader=trainloader,
+                        trainloader=trainloaders[j],
+                        #trainloader=trainloader,
                         valloader=valloaders[j],
                         testloader=testloaders[j],
                         gpu_fraction=1.0,
@@ -296,7 +313,7 @@ def load_trained_model(device, filename, input_channels, num_classes):
 
 def read_csv_file(file_name, fj_global_epochs, fj_local_epochs, dataset):
     jobs = []
-    jobs.append(Job(id=1, generation_time=datetime.now(), dataset= dataset,
+    jobs.append(Job(id=1, generation_time=datetime.now(), 
                     global_epochs=fj_global_epochs, local_epochs=fj_local_epochs,
                     task=Task('Training', None, None, None, None, False)))  
     with open(file_name, 'r', newline='') as file:
@@ -350,7 +367,6 @@ def read_csv_file(file_name, fj_global_epochs, fj_local_epochs, dataset):
             job=Job(
                 id=int(row['id']),
                 generation_time=datetime.now(),
-                dataset= row['dataset'],
                 global_epochs=global_epochs,
                 local_epochs=local_epochs,
                 task=Task(

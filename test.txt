@@ -1,0 +1,11 @@
+for client in nodes:
+    class_counts = defaultdict(int)
+    print(client.id)
+    # Iterate through the provided indexes
+    for idx in client.trainloader.dataset.indices:
+        # Retrieve the label for the current index
+        label = client.trainloader.dataset.dataset[idx][1]  # Assuming dataset[idx] returns (data, label)
+
+        # Increment the count for the corresponding class label
+        class_counts[label] += 1
+    print(class_counts)

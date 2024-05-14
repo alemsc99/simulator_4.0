@@ -11,7 +11,7 @@ import torch
 import torch.nn as nn
 import torch.nn.utils.prune as prune
 import os
-from resnet import ResNet18
+from resnet18 import ResNet18
 
 
 

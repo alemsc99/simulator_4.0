@@ -3,28 +3,25 @@ import os
 import torch
 import numpy as numpy
 from job_handler import JobHandler
-from utils import read_csv_file, generate_nodes, generate_adjacency_matrix
+from utils import read_csv_file, generate_nodes, generate_adjacency_matrix, define_model
 from server import Server
 from dataset import prepare_dataset
-from resnet import ResNet18
-from utils import check_iid
 
 
+
+BACKBONE_NAME='VGG16'
 JOBS_FILE= './jobs.csv'
 NUMBER_OF_NODES=10
 DATASET= 'cifar10'
 BATCH_SIZE=64
 VAL_RATIO=0.1
-NUM_CLASSES=10
-INPUT_CHANNELS=3
-INPUT_SIZE_X=32
-INPUT_SIZE_Y=32
-CLIENTS_TO_SELECT=2
+CLIENTS_TO_SELECT=1
 FJ_GLOBAL_EPOCHS=4
-FJ_LOCAL_EPOCHS=4
+FJ_LOCAL_EPOCHS=5
 NUMBER_OF_SIMULATIONS=5
 NETWORK_DENSITY=0.5
-
+LR=0.0001
+MOMENTUM=0.9
 def main():
     
     device="cuda" if torch.cuda.is_available() else "cpu"  
@@ -37,21 +34,23 @@ def main():
     
     for i in range(0,NUMBER_OF_SIMULATIONS):
         #Prepare dataset     
-        trainloader, valloader, testloader=prepare_dataset(DATASET, BATCH_SIZE, VAL_RATIO)
+        trainloader, valloader, testloader, num_classes, input_channels, input_size_x, input_size_y=prepare_dataset(DATASET, BATCH_SIZE, VAL_RATIO)
         
+        #Model definition
+        model=define_model(backbone_name=BACKBONE_NAME, num_classes=num_classes, input_channels=input_channels, input_size=input_size_x)
         
         #Network definition
         server=Server(
             number_of_clients=NUMBER_OF_NODES, 
             testloader=testloader,
-            model=ResNet18(num_classes=NUM_CLASSES, input_channels=INPUT_CHANNELS).to(device), #MODEL DEFINITION
-            number_of_channels=INPUT_CHANNELS,
-            input_size_x=INPUT_SIZE_X,
-            input_size_y=INPUT_SIZE_Y,
+            model=model.to(device), 
+            number_of_channels=input_channels,
+            input_size_x=input_size_x,
+            input_size_y=input_size_y,
+            lr=LR,
+            momentum=MOMENTUM,
             device=device)
-
-
-
+        
         adjacency_matrix = generate_adjacency_matrix(num_nodes=NUMBER_OF_NODES, density=NETWORK_DENSITY)
     
         try:
@@ -90,6 +89,7 @@ def main():
         server.send_model(nodes) 
 
         log_file.write("-"*5 + f" Simulation started at {datetime.now()} " + "-"*5 + "\n")
+        log_file.write(f'Device: {device} \n')
         log_file.write(f"Clients selected for training: {selected_clients}\n")
         log_file.flush() 
     
@@ -110,8 +110,8 @@ def main():
                                server=server,
                                training_clients=training_clients,
                                remaining_clients=remaining_clients,
-                               input_channels=INPUT_CHANNELS,
-                               num_classes=NUM_CLASSES,
+                               input_channels=input_channels,
+                               num_classes=num_classes,
                                simulation_number=i
                                )
        

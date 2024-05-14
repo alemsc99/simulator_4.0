@@ -11,13 +11,7 @@ from utils import load_trained_model
 
 class JobHandler:
     def __init__(self, device) -> None:
-        
-        self.lr = 0.0001
-        self.momentum = 0.9
         self.device=device
-       
-
-
 
 
 
@@ -42,8 +36,6 @@ class JobHandler:
                 try:
                     server.start_training(job_id=job.id,
                                           training_clients=training_clients,
-                                          momentum=self.momentum,
-                                          lr=self.lr, 
                                           log_file=log_file, 
                                           global_epochs=job.global_epochs,
                                           local_epochs=job.local_epochs,

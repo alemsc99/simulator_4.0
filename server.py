@@ -19,9 +19,10 @@ PRUNED_FILE='lspruned'
 
 
 class Server:
-    def __init__(self, number_of_clients, testloader, model, number_of_channels, input_size_x, input_size_y,device):
+    def __init__(self, number_of_clients, testloader, model, number_of_channels, input_size_x, input_size_y, lr, momentum, device):
         self.number_of_clients = number_of_clients
         self.model=model
+        self.optimizer=torch.optim.SGD(self.model.parameters(), lr=lr, momentum=momentum)
         self.testloader = testloader
         self.model_parameters=OrderedDict((key, 0) for key in self.model.state_dict().keys())
         self.model_saving_path="./models/"
@@ -141,7 +142,7 @@ class Server:
         return server_loss, server_acc, clients_loss, clients_acc
 
 
-    def start_training(self, job_id,training_clients, momentum, lr, log_file, global_epochs, local_epochs, trained_model=None):
+    def start_training(self, job_id,training_clients, log_file, global_epochs, local_epochs, trained_model=None):
         
         if trained_model is not None:
             self.model=trained_model
@@ -149,14 +150,14 @@ class Server:
         for epoch in range(global_epochs):
             print(f"Starting global epoch {epoch}")
             # Retrieving weights to send to clients
-            params_to_send_dict=self.model.state_dict()
+            #params_to_send_dict=self.model.state_dict()
             for client in training_clients:
                 # Updating clients' weights after the first global epoch
-                if epoch>0:
-                    client.set_parameters(log_file, params_to_send_dict)
-                client.model.to(self.device)
+                # if epoch>0:
+                #     client.set_parameters(log_file, params_to_send_dict)
+                
                 # Training the client
-                params_dict, _, _=client.fit(local_epochs, lr, momentum, log_file)
+                params_dict, _, _=client.fit(local_epochs, self.optimizer, log_file)
                 
                 # Collecting received weights
                 self.aggregate_params_dict(params_dict)
@@ -191,8 +192,8 @@ class Server:
                     pruning_rate=task.pruning_rate, 
                     device=device) 
                 self.model_parameters=self.model.state_dict()  
-                for client in clients:
-                    client.set_parameters(log_file, self.model.state_dict().values())
+                # for client in clients:
+                #     client.set_parameters(log_file, self.model.state_dict())
                 self.save_model(log_file, task.pruning_rate)          
             except Exception as e:
                 log_file.write(f"Error running the script: {e}")

@@ -46,7 +46,7 @@ class Client:
         return parameters
     
     
-    def fit(self,  epochs, lr, momentum, log_file):
+    def fit(self,  epochs, optimizer, log_file):
         #parameters is a list of numpy arrays representing the current state of the global model
         #config is a python dictionary with additional information
 
@@ -55,8 +55,7 @@ class Client:
         log_file.write(f"Starting training model of client {self.id}\n")
         print(f"Starting training model of client {self.id}\n")
 
-        # Local training of the model
-        optim=torch.optim.SGD(self.model.parameters(), lr=lr, momentum=momentum)
+    
         
         
         # gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=self.gpu_fraction)
@@ -67,7 +66,7 @@ class Client:
         train(net=self.model,
               trainloader=self.trainloader, 
               valloader=self.valloader, 
-              optimizer=optim, 
+              optimizer=optimizer, 
               epochs=epochs, 
               log_file=log_file, 
               device=self.device)
