@@ -10,7 +10,7 @@ import random
 from collections import OrderedDict
 import torch
 from model import test
-from pruning import random_unstructured_pruning, local_random_structured_pruning
+from pruning import global_unstructured_pruning, local_structured_pruning, local_unstructured_pruning
 from utils import measure_latency_cpu_usage, measure_gpu_throughput_and_macs
 from torch.optim.lr_scheduler import StepLR
 
@@ -182,26 +182,48 @@ class Server:
         
     
     def prune_fn(self, task, clients, device, log_file):
-        if task.name== "Pruning":
+        if task.name== "GUPruning":
             try:
-                random_unstructured_pruning(pruning_rate=task.pruning_rate, device=device)  
-                self.model_parameters=self.model.state_dict()              
+                global_unstructured_pruning(
+                    model=self.model,
+                    pruning_rate=task.pruning_rate,
+                    isRandom=task.isRandom
+                    ) 
+                self.model_parameters=self.model.state_dict()  
+                # for client in clients:
+                #     client.set_parameters(log_file, self.model.state_dict())
+                self.save_model(log_file, task.pruning_rate)       
             except Exception as e:
                 log_file.write(f"Error running the script: {e}")
                 log_file.flush()
         elif task.name== "LSPruning":
             try:
-                local_random_structured_pruning(
+                local_structured_pruning(
                     model=self.model,
-                    pruning_rate=task.pruning_rate, 
-                    device=device) 
+                    pruning_rate=task.pruning_rate,
+                    isRandom=task.isRandom
+                    ) 
                 self.model_parameters=self.model.state_dict()  
                 # for client in clients:
                 #     client.set_parameters(log_file, self.model.state_dict())
                 self.save_model(log_file, task.pruning_rate)          
             except Exception as e:
                 log_file.write(f"Error running the script: {e}")
-                log_file.flush()                
+                log_file.flush()
+        elif task.name== "LUPruning":
+            try:
+                local_unstructured_pruning(
+                    model=self.model,
+                    pruning_rate=task.pruning_rate,
+                    isRandom=task.isRandom
+                    ) 
+                self.model_parameters=self.model.state_dict()  
+                # for client in clients:
+                #     client.set_parameters(log_file, self.model.state_dict())
+                self.save_model(log_file, task.pruning_rate)          
+            except Exception as e:
+                log_file.write(f"Error running the script: {e}")
+                log_file.flush()                 
         else:
             log_file.write(f"Task {task.name} not recognized")
             log_file.flush()

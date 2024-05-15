@@ -43,7 +43,7 @@ def define_model(backbone_name, num_classes, input_channels, input_size):
     
 def measure_latency_cpu_usage(model, device, num_channels, input_size_x, input_size_y):
     #Latency is the amount of time it takes for a neural network to produce a prediction for a single input sample.
-    dummy_input = torch.randn(1,num_channels,input_size_x,input_size_y, dtype=torch.float).to(device)
+    dummy_input = torch.randn(3,num_channels,input_size_x,input_size_y, dtype=torch.float).to(device)
     model.to(device)
     # INIT LOGGERS
     starter, ender = torch.cuda.Event(enable_timing=True), torch.cuda.Event(enable_timing=True)

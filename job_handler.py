@@ -68,28 +68,17 @@ class JobHandler:
                     log_file.flush()
                     
                     
-            elif job.task.name== "Pruning":
-                try:
-                    random_unstructured_pruning(pruning_rate=job.task.pruning_rate, device=device)               
-                except Exception as e:
-                    log_file.write(f"Error running the script: {e} \n")
-                    log_file.flush()
-                    
-                    
-            elif job.task.name== "LSPruning":
+            elif "Pruning" in job.task.name:
                 clients=list(set(training_clients+remaining_clients))
                 try:
                     server.prune_fn(task=job.task,
                                     clients=clients,
                                     device=device,
                                     log_file=log_file,
-                                    )
-                    #local_random_structured_pruning(pruning_rate=job.task.pruning_rate, device=device)               
+                                    )          
                 except Exception as e:
                     log_file.write(f"Error running the script: {e} \n")
                     log_file.flush()
-                    
-                    
             else:
                 log_file.write(f"Task {job.task.name} not recognized")
                 log_file.flush()

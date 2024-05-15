@@ -11,7 +11,7 @@ import torch
 import torch.nn as nn
 import torch.nn.utils.prune as prune
 import os
-from resnet18 import ResNet18
+
 
 
 
@@ -40,44 +40,55 @@ def retrieve_file(folder, file_name):
 
 
 '''
-This function applies RANDOM UNSTRUCTURED GLOBAL pruning to the model.
+This function applies UNSTRUCTURED GLOBAL pruning to the model.
 '''
-def random_unstructured_pruning(pruning_rate: float, device):
-    trained_model=retrieve_file(folder="./models", file_name='trained_model.pth')
-    model=ResNet18(num_classes=10, input_channels=3).to(device)
-    model.load_state_dict(torch.load(trained_model))
-    
+def global_unstructured_pruning(model, pruning_rate: float, isRandom: bool):    
     modules_list=filter(lambda x: isinstance(x[1], (nn.Conv2d, nn.Linear, nn.BatchNorm2d)), model.named_modules())
     modules_list = map(lambda x: (x[1], 'weight'), modules_list)
     modules_list=tuple(modules_list)
     
-    prune.global_unstructured(modules_list, pruning_method=prune.L1Unstructured, amount=pruning_rate)
+    if isRandom:
+        prune.global_unstructured(modules_list, pruning_method=prune.RandomUnstructured, amount=pruning_rate) #TO TEST
+    else:
+        prune.global_unstructured(modules_list, pruning_method=prune.L1Unstructured, amount=pruning_rate)
+        
     for module in modules_list:
         prune.remove(module[0], module[1])
         
-        
-        
-    pruning_rate_str= "{:02d}".format(int(pruning_rate * 10))
-    path=f"{model_saving_path}pruned_{pruning_rate_str}.pth"
-    # 
-    torch.save(model.state_dict(), f"{path}")
-  
     
     
 '''
 This function applies STRUCTURED LOCAL pruning to the model.
 '''    
-def local_random_structured_pruning(model, pruning_rate: float, device):
+def local_structured_pruning(model, pruning_rate: float, isRandom: bool):
    
     for name, module in model.named_modules():
         if isinstance(module, (nn.Conv2d, nn.Linear)):  # Pruning su Conv2d, Linear
-            m=prune.ln_structured(module, 'weight', pruning_rate,n =float("-inf"), dim=1 )
+            if isRandom:
+                m=prune.random_structured(module, 'weight', pruning_rate, dim=1) #TO TEST
+            else:
+                m=prune.ln_structured(module, 'weight', pruning_rate,n =float("-inf"), dim=1 )
+                
+                
             m=prune.remove(m, name='weight')
- 
-    
-    
+            
 
-
+'''
+This function applies UNSTRUCTURED LOCAL pruning to the model.
+'''
+            
+def local_unstructured_pruning(model, pruning_rate:float, isRandom:bool):
+    for name, module in model.named_modules():
+        if isinstance(module, (nn.Conv2d, nn.Linear)):  # Pruning su Conv2d, Linear
+            if isRandom:
+                m=prune.random_unstructured(module, 'weight', pruning_rate) #TO TEST
+            else:
+                m=prune.l1_unstructured(module, 'weight', pruning_rate) # TO TEST
+                
+                
+            m=prune.remove(m, name='weight')
+            
+            
 def calculate_sparsity_and_NNZ(model):
     total_params = 0
     pruned_params = 0

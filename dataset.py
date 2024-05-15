@@ -13,10 +13,11 @@ def get_mnist(data_path:str='./data'):
     trainset=MNIST(data_path, train=True, download=True, transform=tr)
     testset=MNIST(data_path, train=False, download=True, transform=tr)
     
-    num_classes= 10
+    num_classes= len(trainset.classes)
     input_channels= 1
-    input_size_x= 28
-    input_size_y= 28
+
+    input_size_x=trainset.data.shape[1]
+    input_size_y= trainset.data.shape[2]
 
     return trainset, testset, num_classes, input_channels, input_size_x, input_size_y
 
@@ -26,10 +27,10 @@ def get_cifar10(data_path:str='./data'):
     trainset=CIFAR10(data_path, train=True, download=True, transform=tr)
     testset=CIFAR10(data_path, train=False, download=True, transform=tr)
 
-    num_classes= 10
+    num_classes= len(trainset.classes)
     input_channels= 3
-    input_size_x= 32
-    input_size_y= 32
+    input_size_x= trainset.data.shape[1]
+    input_size_y= trainset.data.shape[2]
     
     return trainset, testset, num_classes, input_channels, input_size_x, input_size_y
 
@@ -39,10 +40,10 @@ def get_cifar100(data_path:str='./data'):
     trainset=CIFAR100(data_path, train=True, download=True, transform=tr)
     testset=CIFAR100(data_path, train=False, download=True, transform=tr)
     
-    num_classes= 100
+    num_classes= len(trainset.classes)
     input_channels= 3
-    input_size_x= 32
-    input_size_y= 32
+    input_size_x= trainset.data.shape[1]
+    input_size_y= trainset.data.shape[2]
     
     return trainset, testset, num_classes, input_channels, input_size_x, input_size_y
 
