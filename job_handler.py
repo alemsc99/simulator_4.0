@@ -2,7 +2,7 @@
 import torch
 from datetime import datetime
 from utils import show_clients_loss, write_matrix
-from pruning import random_unstructured_pruning, local_random_structured_pruning
+
 import numpy
 
 PRUNED_TRAINED_FILE='lstrainedpruned'

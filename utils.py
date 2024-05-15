@@ -319,7 +319,7 @@ def read_csv_file(file_name, fj_global_epochs, fj_local_epochs, dataset):
     jobs = []
     jobs.append(Job(id=1, generation_time=datetime.now(), 
                     global_epochs=fj_global_epochs, local_epochs=fj_local_epochs,
-                    task=Task('Training', None, None, None, None, False)))  
+                    task=Task('Training', None, None, False)))  
     with open(file_name, 'r', newline='') as file:
         reader = csv.DictReader(file)
         for row in reader:
@@ -329,13 +329,7 @@ def read_csv_file(file_name, fj_global_epochs, fj_local_epochs, dataset):
             local_epochs=row['local_epochs']
             if local_epochs!='None':
                 local_epochs=int(local_epochs)
-            isGlobal= row['isGlobal']
-            if isGlobal=='True':
-                isGlobal=True
-            elif isGlobal=='False':
-                isGlobal=False
-            else:
-                isGlobal=None
+           
                 
             isRandom= row['isRandom']
             if isRandom=='True':
@@ -345,14 +339,7 @@ def read_csv_file(file_name, fj_global_epochs, fj_local_epochs, dataset):
             else:
                 isRandom=None
                 
-            isStructured= row['isStructured']
-            if isStructured=='True':
-                isStructured=True
-            elif isStructured=='False':
-                isStructured=False
-            else:
-                isStructured=None
-            
+           
             pruning_rate= row['pruning_rate']
             if pruning_rate!='None':
                 pruning_rate=float(pruning_rate)
@@ -375,9 +362,9 @@ def read_csv_file(file_name, fj_global_epochs, fj_local_epochs, dataset):
                 local_epochs=local_epochs,
                 task=Task(
                     name=row['task_name'],
-                    isGlobal= isGlobal,
+                    
                     isRandom= isRandom,
-                    isStructured= isStructured,
+                   
                     pruning_rate= pruning_rate,
                     pre_trained= pre_trained
                 )

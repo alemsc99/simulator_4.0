@@ -10,14 +10,12 @@ This class defines a job and its attributes:
 - name: the name of the job
 '''
 class Task:
-    def __init__(self, name:str, isGlobal=None, isRandom=None, isStructured=None, pruning_rate=None, pre_trained=None) -> None:
+    def __init__(self, name:str, isRandom=None, pruning_rate=None, pre_trained=None) -> None:
         if name in {"Training", "Testing", "Pruning", "GUPruning", "LSPruning", "LUPruning"}:
                 self.name=name
         else:
             raise ValueError("task must be either Training, Testing, Pruning, GUPruning, LSPruning or LUPruning")
-        self.isGlobal=isGlobal
         self.isRandom=isRandom
-        self.isStructured=isStructured
         if pruning_rate is not None and pruning_rate!='None':
             self.pruning_rate=float(pruning_rate)
         else:

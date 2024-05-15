@@ -48,7 +48,7 @@ def global_unstructured_pruning(model, pruning_rate: float, isRandom: bool):
     modules_list=tuple(modules_list)
     
     if isRandom:
-        prune.global_unstructured(modules_list, pruning_method=prune.RandomUnstructured, amount=pruning_rate) #TO TEST
+        prune.global_unstructured(modules_list, pruning_method=prune.RandomUnstructured, amount=pruning_rate)
     else:
         prune.global_unstructured(modules_list, pruning_method=prune.L1Unstructured, amount=pruning_rate)
         

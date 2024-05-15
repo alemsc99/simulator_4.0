@@ -9,7 +9,7 @@ from dataset import prepare_dataset
 
 
 
-BACKBONE_NAME='VGG16'
+BACKBONE_NAME='ResNet18'
 JOBS_FILE='./jobs.csv'
 NUMBER_OF_NODES= 10
 DATASET='cifar10'
